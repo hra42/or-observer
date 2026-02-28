@@ -3,6 +3,8 @@
 	import { fetchTraces, type TraceRow } from '$lib/api';
 	import Spinner from '$lib/components/Spinner.svelte';
 	import ErrorAlert from '$lib/components/ErrorAlert.svelte';
+	import TraceMessages from '$lib/components/TraceMessages.svelte';
+	import TraceMetadata from '$lib/components/TraceMetadata.svelte';
 
 	let userID = $state('');
 	let model = $state('');
@@ -11,6 +13,11 @@
 	let limit = $state(50);
 	let offset = $state(0);
 	let selected = $state<TraceRow | null>(null);
+	let activeTab = $state<'messages' | 'metadata'>('messages');
+
+	let parsedMetadata = $derived<Record<string, unknown>>(
+		selected ? (() => { try { return JSON.parse(selected.metadata || '{}'); } catch { return {}; } })() : {}
+	);
 
 	function toRFC3339(local: string): string {
 		if (!local) return '';
@@ -139,8 +146,8 @@
 						{#each traces as trace}
 							<tr
 								class="cursor-pointer border-b border-gray-200/50 transition-colors hover:bg-gray-200/50 dark:border-gray-700/50 dark:hover:bg-gray-700/50"
-								onclick={() => (selected = trace)}
-								onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selected = trace; } }}
+								onclick={() => { selected = trace; activeTab = 'messages'; }}
+								onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selected = trace; activeTab = 'messages'; } }}
 								tabindex="0"
 								role="button"
 							>
@@ -197,7 +204,7 @@
 		tabindex="-1"
 	>
 		<div
-			class="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white shadow-xl dark:bg-gray-800"
+			class="max-h-[85vh] w-full max-w-4xl overflow-y-auto rounded-lg bg-white shadow-xl dark:bg-gray-800"
 			onclick={(e) => e.stopPropagation()}
 			onkeydown={(e) => e.stopPropagation()}
 			role="dialog"
@@ -209,7 +216,7 @@
 				<button onclick={() => (selected = null)} class="text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">✕</button>
 			</div>
 			<div class="space-y-4 p-6 text-sm">
-				<div class="grid grid-cols-2 gap-4">
+				<div class="grid grid-cols-2 gap-4 sm:grid-cols-3">
 					{#each [
 						['Trace ID', selected.trace_id],
 						['Span ID', selected.span_id],
@@ -230,15 +237,30 @@
 						</div>
 					{/each}
 				</div>
-				<div>
-					<p class="mb-2 text-gray-600 dark:text-gray-400">Metadata</p>
-					<pre
-						class="overflow-x-auto rounded bg-gray-100 p-3 text-xs text-gray-700 dark:bg-gray-900 dark:text-gray-300">{JSON.stringify(
-							JSON.parse(selected.metadata || '{}'),
-							null,
-							2
-						)}</pre>
+
+				<!-- Tabs -->
+				<div class="border-b border-gray-200 dark:border-gray-700">
+					<div class="flex gap-4">
+						<button
+							onclick={() => (activeTab = 'messages')}
+							class="border-b-2 px-1 pb-2 text-sm font-medium transition-colors {activeTab === 'messages' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}"
+						>
+							Messages
+						</button>
+						<button
+							onclick={() => (activeTab = 'metadata')}
+							class="border-b-2 px-1 pb-2 text-sm font-medium transition-colors {activeTab === 'metadata' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}"
+						>
+							Metadata
+						</button>
+					</div>
 				</div>
+
+				{#if activeTab === 'messages'}
+					<TraceMessages metadata={parsedMetadata} />
+				{:else}
+					<TraceMetadata metadata={parsedMetadata} />
+				{/if}
 			</div>
 		</div>
 	</div>

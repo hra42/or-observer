@@ -1,0 +1,5 @@
+server
+data/
+*.duckdb
+*.duckdb.wal
+.env

@@ -1,23 +1,32 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 
-	let { cost24h = 0, errors24h = 0 }: { cost24h?: number; errors24h?: number } = $props();
+	let {
+		cost24h = 0,
+		errors24h = 0,
+		p95LatencyMs = 0
+	}: { cost24h?: number; errors24h?: number; p95LatencyMs?: number } = $props();
 	let dismissed = $state<Set<string>>(new Set());
 
 	const THRESHOLDS_KEY = 'or-observer-alert-thresholds';
 
-	function getThresholds(): { costPerDay: number; maxErrors: number } {
-		if (!browser) return { costPerDay: 5, maxErrors: 0 };
+	function getThresholds(): { costPerDay: number; maxErrors: number; maxLatencyMs: number } {
+		if (!browser) return { costPerDay: 5, maxErrors: 0, maxLatencyMs: 5000 };
 		try {
 			const stored = localStorage.getItem(THRESHOLDS_KEY);
-			if (stored) return JSON.parse(stored);
+			if (stored) return { costPerDay: 5, maxErrors: 0, maxLatencyMs: 5000, ...JSON.parse(stored) };
 		} catch {
 			// ignore
 		}
-		return { costPerDay: 5, maxErrors: 0 };
+		return { costPerDay: 5, maxErrors: 0, maxLatencyMs: 5000 };
 	}
 
-	let thresholds = $derived(getThresholds());
+	// Re-read thresholds from localStorage each time the component is re-evaluated
+	// so changes on the /alerts page take effect after navigation.
+	let thresholds = $state(getThresholds());
+	$effect(() => {
+		if (browser) thresholds = getThresholds();
+	});
 
 	let alerts = $derived.by(() => {
 		const list: { id: string; type: 'warning' | 'error'; message: string }[] = [];
@@ -33,6 +42,13 @@
 				id: 'errors',
 				type: 'error',
 				message: `${errors24h} errors in the last 24h (threshold: ${thresholds.maxErrors})`
+			});
+		}
+		if (p95LatencyMs > thresholds.maxLatencyMs) {
+			list.push({
+				id: 'latency',
+				type: 'warning',
+				message: `P95 latency (${p95LatencyMs.toFixed(0)}ms) exceeds threshold (${thresholds.maxLatencyMs}ms)`
 			});
 		}
 		return list.filter((a) => !dismissed.has(a.id));

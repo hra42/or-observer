@@ -16,9 +16,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-
-      - name: Remove local replace directive
-        run: go mod edit -dropreplace=github.com/hra42/openrouter-go
+          cache: true
 
       - name: Tidy modules
         run: go mod tidy

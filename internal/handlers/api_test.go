@@ -275,8 +275,17 @@ func TestCostsBreakdownHandler_WithDateRange(t *testing.T) {
 		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 	}
 	var resp map[string]any
-	json.Unmarshal(w.Body.Bytes(), &resp) //nolint:errcheck
-	breakdown := resp["breakdown"].([]any)
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to unmarshal response: %v; body=%q", err, w.Body.String())
+	}
+	breakdownVal, ok := resp["breakdown"]
+	if !ok {
+		t.Fatalf("response missing 'breakdown' field: %#v", resp)
+	}
+	breakdown, ok := breakdownVal.([]any)
+	if !ok {
+		t.Fatalf("'breakdown' has unexpected type %T: %#v", breakdownVal, breakdownVal)
+	}
 	if len(breakdown) != 2 {
 		t.Errorf("expected 2 breakdown rows with date range, got %d", len(breakdown))
 	}

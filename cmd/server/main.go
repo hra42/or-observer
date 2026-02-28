@@ -60,7 +60,6 @@ func main() {
 
 	// Start background worker for hourly aggregation + data retention.
 	workerCtx, workerCancel := context.WithCancel(context.Background())
-	defer workerCancel()
 	w := worker.New(client.DB(), logger.Named("worker"), 1*time.Hour, 30*24*time.Hour)
 	go w.Run(workerCtx)
 

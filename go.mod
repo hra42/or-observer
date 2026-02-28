@@ -4,7 +4,7 @@ go 1.26
 
 require (
 	github.com/duckdb/duckdb-go/v2 v2.5.5
-	github.com/hra42/openrouter-go v0.0.0
+	github.com/hra42/openrouter-go v1.5.0
 	go.uber.org/zap v1.27.1
 )
 
@@ -33,5 +33,3 @@ require (
 	golang.org/x/tools v0.41.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 )
-
-replace github.com/hra42/openrouter-go => /home/hra/Documents/ai/openrouter-go

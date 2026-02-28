@@ -51,18 +51,20 @@ func writeError(w http.ResponseWriter, status int, msg string) {
 }
 
 // validateDateParam checks that v is a valid RFC3339 timestamp (if non-empty).
+// Accepts fractional seconds (e.g. values produced by JS Date.toISOString()).
 func validateDateParam(v string) error {
 	if v == "" {
 		return nil
 	}
-	_, err := time.Parse(time.RFC3339, v)
+	_, err := time.Parse(time.RFC3339Nano, v)
 	return err
 }
 
-// sanitizeString caps s at maxLen characters.
+// sanitizeString caps s at maxLen runes.
 func sanitizeString(s string, maxLen int) string {
-	if len(s) > maxLen {
-		return s[:maxLen]
+	runes := []rune(s)
+	if len(runes) > maxLen {
+		return string(runes[:maxLen])
 	}
 	return s
 }

@@ -22,10 +22,19 @@
 	let activeTab = $state<'costs' | 'latency'>('costs');
 	let latencyGroupBy = $state<'model' | 'user' | ''>('');
 
+	// Convert a datetime-local string (YYYY-MM-DDTHH:mm, no tz) to RFC3339 UTC.
+	function toRFC3339(local: string): string {
+		if (!local) return '';
+		return new Date(local).toISOString();
+	}
+
 	const now = new Date();
-	const defaultStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
-	let rangeStart = $state(defaultStart);
-	let rangeEnd = $state(now.toISOString());
+	// datetime-local inputs expect "YYYY-MM-DDTHH:mm" format.
+	function toLocalInput(d: Date): string {
+		return d.toISOString().slice(0, 16);
+	}
+	let rangeStart = $state(toLocalInput(new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)));
+	let rangeEnd = $state(toLocalInput(now));
 	let costRangeStart = $state('');
 	let costRangeEnd = $state('');
 
@@ -35,14 +44,14 @@
 			fetchCostsBreakdown(
 				groupBy,
 				costPeriod,
-				costRangeStart || undefined,
-				costRangeEnd || undefined
+				costRangeStart ? toRFC3339(costRangeStart) : undefined,
+				costRangeEnd ? toRFC3339(costRangeEnd) : undefined
 			)
 	}));
 
 	const latencyQuery = createQuery(() => ({
 		queryKey: ['metrics', 'latency', rangeStart, rangeEnd, latencyGroupBy],
-		queryFn: () => fetchMetricsHourly(rangeStart, rangeEnd, latencyGroupBy)
+		queryFn: () => fetchMetricsHourly(toRFC3339(rangeStart), toRFC3339(rangeEnd), latencyGroupBy)
 	}));
 
 	let latencyData = $derived(

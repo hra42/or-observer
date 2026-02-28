@@ -12,14 +12,19 @@
 	let offset = $state(0);
 	let selected = $state<TraceRow | null>(null);
 
+	function toRFC3339(local: string): string {
+		if (!local) return '';
+		return new Date(local).toISOString();
+	}
+
 	const query = createQuery(() => ({
 		queryKey: ['traces', userID, model, startDate, endDate, limit, offset],
 		queryFn: () =>
 			fetchTraces({
 				user_id: userID || undefined,
 				model: model || undefined,
-				start_date: startDate || undefined,
-				end_date: endDate || undefined,
+				start_date: startDate ? toRFC3339(startDate) : undefined,
+				end_date: endDate ? toRFC3339(endDate) : undefined,
 				limit,
 				offset
 			})

@@ -45,6 +45,9 @@
 	let totalErrors24h = $derived(
 		(metricsQuery.data?.metrics ?? []).reduce((s: number, m: MetricRow) => s + m.error_count, 0)
 	);
+	let maxP95Latency24h = $derived(
+		Math.max(0, ...(metricsQuery.data?.metrics ?? []).map((m: MetricRow) => m.p95_latency_ms))
+	);
 
 	let chartData = $derived.by(() => {
 		const byHour = new Map<string, { cost: number; requests: number }>();
@@ -65,7 +68,7 @@
 <div class="space-y-6">
 	<h1 class="text-2xl font-bold">Dashboard</h1>
 
-	<AlertBanner cost24h={totalCost24h} errors24h={totalErrors24h} />
+	<AlertBanner cost24h={totalCost24h} errors24h={totalErrors24h} p95LatencyMs={maxP95Latency24h} />
 
 	<!-- Summary cards -->
 	<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

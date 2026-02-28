@@ -1,0 +1,143 @@
+when:
+  event:
+    - push
+    - pull_request
+    - manual
+
+steps:
+  lint:
+    image: golangci/golangci-lint:v2.7.2
+    environment:
+      GOPROXY: https://go.hra42.com,direct
+    commands:
+      - golangci-lint run --timeout 5m ./...
+
+  go-mod-validation:
+    image: registry.hra42.com/golang:1.26
+    environment:
+      GOPROXY: https://go.hra42.com,direct
+    commands:
+      - cat go.mod
+      - echo "Checking go.mod/go.sum..."
+      - go mod verify
+      - go mod tidy -diff
+      - echo "Go modules validated"
+
+  dockerfile-validation:
+    image: hadolint/hadolint:latest-alpine
+    commands:
+      - hadolint Dockerfile || true
+
+  docker-compose-validation:
+    image: registry.hra42.com/python:3.14-slim
+    commands:
+      - pip install --no-cache-dir pyyaml
+      - python -c "import yaml; yaml.safe_load(open('docker-compose.yml'))"
+
+  security-scan:
+    image: registry.hra42.com/golang:1.26
+    environment:
+      GOPROXY: https://go.hra42.com,direct
+    commands:
+      - go install golang.org/x/vuln/cmd/govulncheck@latest
+      - govulncheck ./... || true
+
+  build-test:
+    image: registry.hra42.com/golang:1.26
+    environment:
+      GOPROXY: https://go.hra42.com,direct
+    commands:
+      - go build -v ./...
+      - go test -v -race ./...
+      - echo "Build and tests passed"
+
+  build-amd64:
+    image: woodpeckerci/plugin-docker-buildx:6.0.3
+    settings:
+      registry: registry.hra42.com
+      repo: registry.hra42.com/or-observer-backend
+      mirror: https://registry.hra42.com
+      tags:
+        - latest-amd64
+      platforms: linux/amd64
+      dockerfile: Dockerfile
+      context: .
+      buildkit_oci_max_parallelism: 32
+      output: type=image,push=true
+      cache_images:
+        - registry.hra42.com/or-observer-backend:cache-amd64
+    when:
+      branch: main
+      event: push
+
+  build-arm64:
+    image: woodpeckerci/plugin-docker-buildx:6.0.3
+    settings:
+      registry: registry.hra42.com
+      repo: registry.hra42.com/or-observer-backend
+      mirror: https://registry.hra42.com
+      tags:
+        - latest-arm64
+      platforms: linux/arm64
+      dockerfile: Dockerfile
+      context: .
+      buildkit_oci_max_parallelism: 4
+      output: type=image,push=true
+      cache_images:
+        - registry.hra42.com/or-observer-backend:cache-arm64
+      ssh_key:
+        from_secret: ssh_key
+      remote_builders:
+        - root@192.168.2.20
+    when:
+      branch: main
+      event: push
+
+  manifest:
+    image: docker:dind
+    commands:
+      - docker buildx imagetools create -t registry.hra42.com/or-observer-backend:latest registry.hra42.com/or-observer-backend:latest-amd64 registry.hra42.com/or-observer-backend:latest-arm64
+    when:
+      branch: main
+      event: push
+    depends_on:
+      - build-amd64
+      - build-arm64
+
+  skopeo-copy:
+    image: registry.hra42.com/skopeo/stable:latest
+    commands:
+      - skopeo copy --multi-arch all docker://registry.hra42.com/or-observer-backend:latest docker://cloud-registry.hra42.com/or-observer/or-observer-backend:latest --dest-creds "$CLOUD_REGISTRY_CREDS"
+    environment:
+      CLOUD_REGISTRY_CREDS:
+        from_secret: cloud_registry_creds
+    when:
+      branch: main
+      event: push
+    depends_on:
+      - manifest
+
+  webhook-notification:
+    image: plugins/webhook
+    settings:
+      urls:
+        from_secret: webhook_url
+      content_type: application/json
+      template: |
+        {
+          "repo": "{{ repo.full_name }}",
+          "commit": "{{ build.commit }}",
+          "branch": "{{ build.branch }}",
+          "status": "{{ build.status }}",
+          "event": "{{ build.event }}",
+          "author": "{{ build.author }}",
+          "link": "{{ build.link }}",
+          "started": "{{ build.started }}",
+          "finished": "{{ build.finished }}",
+          "tag": "{{ build.tag }}"
+        }
+    when:
+      branch: main
+      event: push
+    depends_on:
+      - skopeo-copy

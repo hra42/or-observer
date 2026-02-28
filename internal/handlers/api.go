@@ -8,7 +8,17 @@ import (
 	"time"
 
 	"github.com/hra42/or-observer/internal/db"
+	"go.uber.org/zap"
 )
+
+// logger is the package-level logger. Defaults to no-op so existing tests
+// continue to pass without having to initialise a logger.
+var logger *zap.Logger = zap.NewNop()
+
+// SetLogger replaces the package-level logger (called from main).
+func SetLogger(l *zap.Logger) {
+	logger = l
+}
 
 // corsMiddleware adds CORS headers for frontend development.
 func corsMiddleware(next http.Handler) http.Handler {
@@ -36,7 +46,27 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 }
 
 func writeError(w http.ResponseWriter, status int, msg string) {
+	logger.Warn("api error", zap.Int("status", status), zap.String("msg", msg))
 	writeJSON(w, status, map[string]any{"error": msg, "status": status})
+}
+
+// validateDateParam checks that v is a valid RFC3339 timestamp (if non-empty).
+// Accepts fractional seconds (e.g. values produced by JS Date.toISOString()).
+func validateDateParam(v string) error {
+	if v == "" {
+		return nil
+	}
+	_, err := time.Parse(time.RFC3339Nano, v)
+	return err
+}
+
+// sanitizeString caps s at maxLen runes.
+func sanitizeString(s string, maxLen int) string {
+	runes := []rune(s)
+	if len(runes) > maxLen {
+		return string(runes[:maxLen])
+	}
+	return s
 }
 
 // ─── /api/traces ────────────────────────────────────────────────────────────
@@ -98,10 +128,19 @@ func TracesHandler(client *db.Client) http.HandlerFunc {
 			offset = n
 		}
 
-		userID := q.Get("user_id")
-		model := q.Get("model")
+		userID := sanitizeString(q.Get("user_id"), 255)
+		model := sanitizeString(q.Get("model"), 255)
 		startDate := q.Get("start_date")
 		endDate := q.Get("end_date")
+
+		if err := validateDateParam(startDate); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid start_date: must be RFC3339 format")
+			return
+		}
+		if err := validateDateParam(endDate); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid end_date: must be RFC3339 format")
+			return
+		}
 
 		sqlDB := client.DB()
 		ctx := r.Context()
@@ -207,6 +246,16 @@ func MetricsHourlyHandler(client *db.Client) http.HandlerFunc {
 		end := q.Get("end")
 		groupBy := q.Get("groupBy") // "model", "user", or ""
 
+		// Validate date params before applying defaults.
+		if err := validateDateParam(start); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid start: must be RFC3339 format")
+			return
+		}
+		if err := validateDateParam(end); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid end: must be RFC3339 format")
+			return
+		}
+
 		// Default time range: last 24 hours.
 		if start == "" {
 			start = time.Now().UTC().Add(-24 * time.Hour).Format(time.RFC3339)
@@ -305,6 +354,8 @@ func CostsBreakdownHandler(client *db.Client) http.HandlerFunc {
 		q := r.URL.Query()
 		groupBy := q.Get("groupBy")
 		period := q.Get("period")
+		startParam := q.Get("start")
+		endParam := q.Get("end")
 
 		if groupBy == "" {
 			groupBy = "model"
@@ -317,17 +368,42 @@ func CostsBreakdownHandler(client *db.Client) http.HandlerFunc {
 			period = "daily"
 		}
 
-		var intervalExpr string
-		switch period {
-		case "hourly":
-			intervalExpr = "INTERVAL '1 hour'"
-		case "daily":
-			intervalExpr = "INTERVAL '1 day'"
-		case "overall":
-			intervalExpr = "INTERVAL '100 year'"
-		default:
-			writeError(w, http.StatusBadRequest, "period must be 'hourly', 'daily', or 'overall'")
+		// Validate optional date range params.
+		if err := validateDateParam(startParam); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid start: must be RFC3339 format")
 			return
+		}
+		if err := validateDateParam(endParam); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid end: must be RFC3339 format")
+			return
+		}
+
+		// Build time filter: use explicit date range if provided, otherwise use period-based interval.
+		var whereTime string
+		queryArgs := []any{}
+		if startParam != "" && endParam != "" {
+			whereTime = "created_at BETWEEN ? AND ?"
+			queryArgs = append(queryArgs, startParam, endParam)
+		} else if startParam != "" {
+			whereTime = "created_at >= ?"
+			queryArgs = append(queryArgs, startParam)
+		} else if endParam != "" {
+			whereTime = "created_at <= ?"
+			queryArgs = append(queryArgs, endParam)
+		} else {
+			var intervalExpr string
+			switch period {
+			case "hourly":
+				intervalExpr = "INTERVAL '1 hour'"
+			case "daily":
+				intervalExpr = "INTERVAL '1 day'"
+			case "overall":
+				intervalExpr = "INTERVAL '100 year'"
+			default:
+				writeError(w, http.StatusBadRequest, "period must be 'hourly', 'daily', or 'overall'")
+				return
+			}
+			whereTime = "created_at >= NOW() - " + intervalExpr
 		}
 
 		var dimensionExpr string
@@ -345,14 +421,14 @@ func CostsBreakdownHandler(client *db.Client) http.HandlerFunc {
 			COALESCE(AVG(CAST(cost AS DOUBLE)), 0) as avg_cost,
 			COALESCE(SUM(total_tokens), 0) as total_tokens
 		FROM lake.traces
-		WHERE created_at >= NOW() - ` + intervalExpr + `
+		WHERE ` + whereTime + `
 		GROUP BY ` + dimensionExpr + `
 		ORDER BY total_cost DESC`
 
 		sqlDB := client.DB()
 		ctx := r.Context()
 
-		rows, err := sqlDB.QueryContext(ctx, querySQL)
+		rows, err := sqlDB.QueryContext(ctx, querySQL, queryArgs...)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "query failed: "+err.Error())
 			return

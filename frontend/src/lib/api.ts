@@ -89,11 +89,15 @@ export interface CostsResponse {
 
 export async function fetchCostsBreakdown(
 	groupBy: 'model' | 'user' = 'model',
-	period: 'hourly' | 'daily' | 'overall' = 'daily'
+	period: 'hourly' | 'daily' | 'overall' = 'daily',
+	start?: string,
+	end?: string
 ): Promise<CostsResponse> {
 	const url = new URL('/api/costs/breakdown', API_BASE);
 	url.searchParams.set('groupBy', groupBy);
 	url.searchParams.set('period', period);
+	if (start) url.searchParams.set('start', start);
+	if (end) url.searchParams.set('end', end);
 	const res = await fetch(url.toString());
 	if (!res.ok) throw new Error(`/api/costs/breakdown: ${res.status}`);
 	return res.json();

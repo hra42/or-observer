@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **or-observer** is a self-hosted LLM observability platform for tracking cost, performance, errors, and usage analytics from OpenRouter API calls via webhooks.
 
 **Target scale:** < 1K requests/day
-**Status:** Phase 2 complete — backend APIs and frontend UI implemented.
+**Status:** Phase 3 complete — production-ready with structured logging, graceful shutdown, background workers, dark mode, SSR, and alerts.
 
 ## Tech Stack
 
@@ -19,26 +19,35 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Structure
 
 ```
-cmd/server/main.go              # Entry point, all routes registered here
+cmd/server/main.go              # Entry point: routes, graceful shutdown, worker
 internal/
   db/client.go                  # DuckDB connection + InsertTrace + CountTraces
   db/migrations.go              # Schema setup (CREATE TABLE IF NOT EXISTS)
   handlers/webhook.go           # POST /webhook via BroadcastWebhookHandlerWithError
   handlers/health.go            # GET /health
-  handlers/api.go               # GET /api/traces, /api/metrics/hourly, /api/costs/breakdown
-  handlers/api_test.go          # 10 handler tests
+  handlers/api.go               # GET /api/traces, /api/metrics/hourly, /api/costs/breakdown + SetLogger
+  handlers/api_test.go          # 14 handler tests (incl. date validation, date-range costs)
   models/trace.go               # Trace struct + TraceFromOpenRouter converter
+  worker/worker.go              # Background worker: hourly aggregation + 30-day retention
+  worker/worker_test.go         # Worker tests
 data/
   traces.duckdb                 # DuckDB metadata DB (created at runtime)
   metadata.ducklake             # DuckLake catalog
   parquets/                     # Parquet data files (auto-created by DuckLake)
 frontend/
-  src/routes/dashboard/         # Cost cards, trend chart, top models table
+  src/routes/+layout.svelte     # QueryClientProvider + HydrationBoundary + dark mode
+  src/routes/+error.svelte      # SvelteKit error boundary page
+  src/routes/dashboard/         # Cost cards, trend chart, top models table, alert banner
   src/routes/traces/            # Filterable paginated table + detail modal
-  src/routes/analytics/         # Cost breakdown + latency tabs with Recharts charts
-  src/lib/api.ts                # Typed API client
+  src/routes/analytics/         # Cost breakdown + latency tabs with advanced filters
+  src/routes/alerts/            # Alert threshold configuration (localStorage)
+  src/lib/api.ts                # Typed API client (costs breakdown supports start/end)
   src/lib/recharts.ts           # Recharts re-export with `any` cast (Svelte 5 compat fix)
-  src/lib/components/Nav.svelte # Navigation bar
+  src/lib/stores/theme.svelte.ts # Dark/light mode store with localStorage persistence
+  src/lib/components/Nav.svelte # Navigation bar + theme toggle + mobile hamburger
+  src/lib/components/Spinner.svelte   # Animated loading spinner
+  src/lib/components/ErrorAlert.svelte # Error display with retry button
+  src/lib/components/AlertBanner.svelte # Dismissible threshold alert banners
 ```
 
 ## Key Architecture Decisions
@@ -83,12 +92,33 @@ const query = createQuery(() => ({
 
 **Recharts `Tooltip` type incompatibility with Svelte 5:** Recharts hasn't updated its typedefs for Svelte 5's `Component` type. Fix: re-export with `as any` cast from `src/lib/recharts.ts` and import `Chart_Tooltip` instead of `Tooltip`.
 
+### Structured Logging
+`go.uber.org/zap` is used throughout. The webhook handler receives a logger via constructor; API handlers use a package-level logger set via `handlers.SetLogger()`. Default is `zap.NewNop()` so tests pass without logger init.
+
+### Graceful Shutdown
+`cmd/server/main.go` listens for SIGINT/SIGTERM, cancels the background worker context, and calls `srv.Shutdown()` with a 15s timeout.
+
+### Background Worker
+`internal/worker/worker.go` runs on a 1-hour ticker:
+- **Hourly aggregation:** DELETE last 2h from `lake.metrics_hourly`, then INSERT...SELECT from `lake.traces` (delete-then-insert to work around no ON CONFLICT)
+- **Data retention:** DELETE traces older than 30 days
+
+### Dark Mode
+Class-based dark mode using Tailwind v4 `@custom-variant dark (&:where(.dark *))`. Theme state in `$lib/stores/theme.svelte.ts` with localStorage persistence. Toggle button in Nav. All pages use `bg-gray-100 dark:bg-gray-800` dual-class pattern.
+
+### SSR Prefetching
+Each route has a `+page.ts` universal load that creates a temporary `QueryClient`, calls `prefetchQuery` (via `Promise.allSettled` for graceful failure), and returns `dehydrate(queryClient)`. The layout wraps children in `HydrationBoundary`.
+
+### Alerts
+Frontend-only threshold alerts stored in localStorage (`or-observer-alert-thresholds`). `AlertBanner` component on dashboard shows dismissible warnings when 24h cost or error count exceeds configured thresholds. `/alerts` page for threshold configuration.
+
 ### CORS
 All routes are wrapped with `handlers.WithCORS()` middleware in `main.go`.
 
 ### Env Vars
 - `DB_PATH` (default: `data/traces.duckdb`)
 - `ADDR` (default: `:8080`)
+- `LOG_LEVEL` (set to `debug` for development logger, otherwise production)
 - Frontend: `VITE_API_URL` (default: `http://localhost:8080`)
 
 ## API Endpoints
@@ -99,7 +129,7 @@ All routes are wrapped with `handlers.WithCORS()` middleware in `main.go`.
 | GET | `/health` | — | DB status + trace count |
 | GET | `/api/traces` | `user_id`, `model`, `start_date`, `end_date`, `limit` (max 500), `offset` | Paginated traces |
 | GET | `/api/metrics/hourly` | `start`, `end`, `groupBy` (`model`\|`user`) | On-demand hourly aggregation |
-| GET | `/api/costs/breakdown` | `groupBy` (`model`\|`user`), `period` (`hourly`\|`daily`\|`overall`) | Cost summary |
+| GET | `/api/costs/breakdown` | `groupBy` (`model`\|`user`), `period` (`hourly`\|`daily`\|`overall`), `start`, `end` (optional RFC3339 date range) | Cost summary |
 
 ## Database Schema
 

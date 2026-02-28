@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { createQuery } from '@tanstack/svelte-query';
 	import { fetchMetricsHourly, fetchCostsBreakdown, fetchHealth, type MetricRow } from '$lib/api';
 	import {
@@ -122,7 +123,7 @@
 			<ErrorAlert message="Failed to load metrics" onRetry={() => metricsQuery.refetch()} />
 		{:else if chartData.length === 0}
 			<div class="flex h-48 items-center justify-center text-gray-500 dark:text-gray-500">No data yet</div>
-		{:else}
+		{:else if browser}
 			<ResponsiveContainer width="100%" height={240}>
 				<LineChart data={chartData}>
 					<CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />

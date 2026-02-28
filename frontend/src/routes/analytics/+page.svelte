@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { createQuery } from '@tanstack/svelte-query';
 	import { fetchCostsBreakdown, fetchMetricsHourly, type MetricRow, type BreakdownRow } from '$lib/api';
 	import {
@@ -144,20 +145,22 @@
 		{:else}
 			<div class="rounded-lg bg-gray-100 p-4 dark:bg-gray-800">
 				<h2 class="mb-4 text-lg font-semibold">Cost by {groupBy}</h2>
-				<ResponsiveContainer width="100%" height={280}>
-					<BarChart data={costData} margin={{ top: 4, right: 16, left: 0, bottom: 40 }}>
-						<CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
-						<XAxis
-							dataKey="name"
-							stroke={axisStroke}
-							tick={{ fontSize: 10, angle: -30, textAnchor: 'end' }}
-						/>
-						<YAxis stroke={axisStroke} tick={{ fontSize: 11 }} />
-						<Tooltip />
-						<Legend />
-						<Bar dataKey="cost" name="Cost ($)" fill="#818cf8" />
-					</BarChart>
-				</ResponsiveContainer>
+				{#if browser}
+					<ResponsiveContainer width="100%" height={280}>
+						<BarChart data={costData} margin={{ top: 4, right: 16, left: 0, bottom: 40 }}>
+							<CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+							<XAxis
+								dataKey="name"
+								stroke={axisStroke}
+								tick={{ fontSize: 10, angle: -30, textAnchor: 'end' }}
+							/>
+							<YAxis stroke={axisStroke} tick={{ fontSize: 11 }} />
+							<Tooltip />
+							<Legend />
+							<Bar dataKey="cost" name="Cost ($)" fill="#818cf8" />
+						</BarChart>
+					</ResponsiveContainer>
+				{/if}
 			</div>
 
 			<div class="rounded-lg bg-gray-100 p-4 dark:bg-gray-800">
@@ -217,37 +220,39 @@
 		{:else}
 			<div class="rounded-lg bg-gray-100 p-4 dark:bg-gray-800">
 				<h2 class="mb-4 text-lg font-semibold">Latency distribution over time</h2>
-				<ResponsiveContainer width="100%" height={300}>
-					<ComposedChart data={latencyData}>
-						<CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
-						<XAxis
-							dataKey="hour"
-							stroke={axisStroke}
-							tick={{ fontSize: 10, angle: -30, textAnchor: 'end' }}
-							height={50}
-						/>
-						<YAxis stroke={axisStroke} tick={{ fontSize: 11 }} unit="ms" />
-						<Tooltip />
-						<Legend />
-						<Bar dataKey="avg" name="Avg (ms)" fill="#6366f1" opacity={0.6} />
-						<Line
-							type="monotone"
-							dataKey="p95"
-							name="P95 (ms)"
-							stroke="#f59e0b"
-							dot={false}
-							strokeWidth={2}
-						/>
-						<Line
-							type="monotone"
-							dataKey="p99"
-							name="P99 (ms)"
-							stroke="#ef4444"
-							dot={false}
-							strokeWidth={2}
-						/>
-					</ComposedChart>
-				</ResponsiveContainer>
+				{#if browser}
+					<ResponsiveContainer width="100%" height={300}>
+						<ComposedChart data={latencyData}>
+							<CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+							<XAxis
+								dataKey="hour"
+								stroke={axisStroke}
+								tick={{ fontSize: 10, angle: -30, textAnchor: 'end' }}
+								height={50}
+							/>
+							<YAxis stroke={axisStroke} tick={{ fontSize: 11 }} unit="ms" />
+							<Tooltip />
+							<Legend />
+							<Bar dataKey="avg" name="Avg (ms)" fill="#6366f1" opacity={0.6} />
+							<Line
+								type="monotone"
+								dataKey="p95"
+								name="P95 (ms)"
+								stroke="#f59e0b"
+								dot={false}
+								strokeWidth={2}
+							/>
+							<Line
+								type="monotone"
+								dataKey="p99"
+								name="P99 (ms)"
+								stroke="#ef4444"
+								dot={false}
+								strokeWidth={2}
+							/>
+						</ComposedChart>
+					</ResponsiveContainer>
+				{/if}
 			</div>
 		{/if}
 	{/if}

@@ -29,7 +29,7 @@
 </svelte:head>
 
 <QueryClientProvider client={queryClient}>
-	<HydrationBoundary state={dehydratedState}>
+	<HydrationBoundary state={dehydratedState} options={undefined} queryClient={undefined}>
 		<div class="min-h-screen bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100" class:dark={theme === 'dark'}>
 			<Nav />
 			<main class="mx-auto max-w-7xl px-4 py-6">

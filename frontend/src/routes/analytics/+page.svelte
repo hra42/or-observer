@@ -102,27 +102,27 @@
 		<!-- Controls -->
 		<div class="flex flex-wrap gap-3 rounded-lg bg-gray-100 p-4 dark:bg-gray-800">
 			<div class="flex items-center gap-2">
-				<label class="text-sm text-gray-600 dark:text-gray-400">Group by</label>
-				<select bind:value={groupBy} class={inputClass}>
+				<label for="cost-group-by" class="text-sm text-gray-600 dark:text-gray-400">Group by</label>
+				<select id="cost-group-by" bind:value={groupBy} class={inputClass}>
 					<option value="model">Model</option>
 					<option value="user">User</option>
 				</select>
 			</div>
 			<div class="flex items-center gap-2">
-				<label class="text-sm text-gray-600 dark:text-gray-400">Period</label>
-				<select bind:value={costPeriod} class={inputClass}>
+				<label for="cost-period" class="text-sm text-gray-600 dark:text-gray-400">Period</label>
+				<select id="cost-period" bind:value={costPeriod} class={inputClass}>
 					<option value="hourly">Last hour</option>
 					<option value="daily">Last 24h</option>
 					<option value="overall">All time</option>
 				</select>
 			</div>
 			<div class="flex items-center gap-2">
-				<label class="text-sm text-gray-600 dark:text-gray-400">Start</label>
-				<input bind:value={costRangeStart} type="datetime-local" class={inputClass} />
+				<label for="cost-range-start" class="text-sm text-gray-600 dark:text-gray-400">Start</label>
+				<input id="cost-range-start" bind:value={costRangeStart} type="datetime-local" class={inputClass} />
 			</div>
 			<div class="flex items-center gap-2">
-				<label class="text-sm text-gray-600 dark:text-gray-400">End</label>
-				<input bind:value={costRangeEnd} type="datetime-local" class={inputClass} />
+				<label for="cost-range-end" class="text-sm text-gray-600 dark:text-gray-400">End</label>
+				<input id="cost-range-end" bind:value={costRangeEnd} type="datetime-local" class={inputClass} />
 			</div>
 		</div>
 
@@ -182,16 +182,16 @@
 		<!-- Latency controls -->
 		<div class="flex flex-wrap gap-3 rounded-lg bg-gray-100 p-4 dark:bg-gray-800">
 			<div class="flex items-center gap-2">
-				<label class="text-sm text-gray-600 dark:text-gray-400">Start</label>
-				<input bind:value={rangeStart} type="datetime-local" class={inputClass} />
+				<label for="latency-range-start" class="text-sm text-gray-600 dark:text-gray-400">Start</label>
+				<input id="latency-range-start" bind:value={rangeStart} type="datetime-local" class={inputClass} />
 			</div>
 			<div class="flex items-center gap-2">
-				<label class="text-sm text-gray-600 dark:text-gray-400">End</label>
-				<input bind:value={rangeEnd} type="datetime-local" class={inputClass} />
+				<label for="latency-range-end" class="text-sm text-gray-600 dark:text-gray-400">End</label>
+				<input id="latency-range-end" bind:value={rangeEnd} type="datetime-local" class={inputClass} />
 			</div>
 			<div class="flex items-center gap-2">
-				<label class="text-sm text-gray-600 dark:text-gray-400">Group by</label>
-				<select bind:value={latencyGroupBy} class={inputClass}>
+				<label for="latency-group-by" class="text-sm text-gray-600 dark:text-gray-400">Group by</label>
+				<select id="latency-group-by" bind:value={latencyGroupBy} class={inputClass}>
 					<option value="">All</option>
 					<option value="model">Model</option>
 					<option value="user">User</option>

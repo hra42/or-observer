@@ -59,25 +59,30 @@
 		<input
 			bind:value={userID}
 			placeholder="User ID"
+			aria-label="User ID"
 			class="w-full rounded bg-gray-200 px-3 py-1.5 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white sm:w-auto"
 		/>
 		<input
 			bind:value={model}
 			placeholder="Model"
+			aria-label="Model"
 			class="w-full rounded bg-gray-200 px-3 py-1.5 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white sm:w-auto"
 		/>
 		<input
 			bind:value={startDate}
 			type="datetime-local"
+			aria-label="Start date"
 			class="w-full rounded bg-gray-200 px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white sm:w-auto"
 		/>
 		<input
 			bind:value={endDate}
 			type="datetime-local"
+			aria-label="End date"
 			class="w-full rounded bg-gray-200 px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white sm:w-auto"
 		/>
 		<select
 			bind:value={limit}
+			aria-label="Results per page"
 			class="w-full rounded bg-gray-200 px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white sm:w-auto"
 		>
 			<option value={25}>25 / page</option>
@@ -130,6 +135,9 @@
 							<tr
 								class="cursor-pointer border-b border-gray-200/50 transition-colors hover:bg-gray-200/50 dark:border-gray-700/50 dark:hover:bg-gray-700/50"
 								onclick={() => (selected = trace)}
+								onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selected = trace; } }}
+								tabindex="0"
+								role="button"
 							>
 								<td class="px-4 py-2 font-mono text-xs text-indigo-600 dark:text-indigo-300"
 									>{trace.trace_id.slice(0, 8)}…</td
@@ -176,16 +184,20 @@
 
 <!-- Detail modal -->
 {#if selected}
-	<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
 	<div
 		class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
 		onclick={() => (selected = null)}
+		onkeydown={(e) => { if (e.key === 'Escape') selected = null; }}
+		role="button"
+		tabindex="-1"
 	>
 		<div
 			class="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white shadow-xl dark:bg-gray-800"
 			onclick={(e) => e.stopPropagation()}
+			onkeydown={(e) => e.stopPropagation()}
 			role="dialog"
 			aria-modal="true"
+			tabindex="-1"
 		>
 			<div class="flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-gray-700">
 				<h2 class="font-semibold">Trace detail</h2>

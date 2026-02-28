@@ -1,11 +1,12 @@
 <script lang="ts">
 	let { size = 'md' }: { size?: 'sm' | 'md' | 'lg' } = $props();
 
-	const sizeClass = {
+	const sizes: Record<string, string> = {
 		sm: 'h-4 w-4',
 		md: 'h-6 w-6',
 		lg: 'h-10 w-10'
-	}[size];
+	};
+	let sizeClass = $derived(sizes[size]);
 </script>
 
 <div class="flex items-center justify-center" role="status" aria-label="Loading">

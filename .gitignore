@@ -1,4 +1,4 @@
-server
+/server
 data/
 *.duckdb
 *.duckdb.wal

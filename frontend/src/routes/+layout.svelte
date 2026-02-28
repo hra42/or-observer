@@ -1,9 +1,11 @@
 <script lang="ts">
 	import favicon from '$lib/assets/favicon.svg';
 	import '../app.css';
-	import { QueryClient, QueryClientProvider } from '@tanstack/svelte-query';
+	import { QueryClient, QueryClientProvider, HydrationBoundary } from '@tanstack/svelte-query';
 	import { browser } from '$app/environment';
 	import Nav from '$lib/components/Nav.svelte';
+	import { getTheme } from '$lib/stores/theme.svelte';
+	import { page } from '$app/state';
 
 	let { children } = $props();
 
@@ -16,6 +18,9 @@
 			}
 		}
 	});
+
+	let theme = $derived(getTheme());
+	let dehydratedState = $derived(page.data?.dehydratedState);
 </script>
 
 <svelte:head>
@@ -24,10 +29,12 @@
 </svelte:head>
 
 <QueryClientProvider client={queryClient}>
-	<div class="min-h-screen bg-gray-950 text-gray-100">
-		<Nav />
-		<main class="mx-auto max-w-7xl px-4 py-6">
-			{@render children()}
-		</main>
-	</div>
+	<HydrationBoundary state={dehydratedState}>
+		<div class="min-h-screen bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100" class:dark={theme === 'dark'}>
+			<Nav />
+			<main class="mx-auto max-w-7xl px-4 py-6">
+				{@render children()}
+			</main>
+		</div>
+	</HydrationBoundary>
 </QueryClientProvider>

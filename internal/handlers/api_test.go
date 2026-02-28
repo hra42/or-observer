@@ -232,6 +232,69 @@ func TestCostsBreakdownHandler_InvalidPeriod(t *testing.T) {
 	}
 }
 
+// ─── Date Validation Tests ──────────────────────────────────────────────────
+
+func TestTracesHandler_InvalidStartDate(t *testing.T) {
+	client := newTestClient(t)
+	handler := handlers.TracesHandler(client)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/traces?start_date=not-a-date", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestMetricsHourlyHandler_InvalidStartDate(t *testing.T) {
+	client := newTestClient(t)
+	handler := handlers.MetricsHourlyHandler(client)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/metrics/hourly?start=bad-date", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestCostsBreakdownHandler_WithDateRange(t *testing.T) {
+	client := newTestClient(t)
+	insertTestTrace(t, client, "t1", "s1", "gpt-4", "user1", 0.10)
+	insertTestTrace(t, client, "t2", "s2", "claude-3", "user1", 0.05)
+
+	handler := handlers.CostsBreakdownHandler(client)
+	req := httptest.NewRequest(http.MethodGet,
+		"/api/costs/breakdown?groupBy=model&start=2000-01-01T00:00:00Z&end=2099-12-31T23:59:59Z", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp map[string]any
+	json.Unmarshal(w.Body.Bytes(), &resp) //nolint:errcheck
+	breakdown := resp["breakdown"].([]any)
+	if len(breakdown) != 2 {
+		t.Errorf("expected 2 breakdown rows with date range, got %d", len(breakdown))
+	}
+}
+
+func TestCostsBreakdownHandler_InvalidStartDate(t *testing.T) {
+	client := newTestClient(t)
+	handler := handlers.CostsBreakdownHandler(client)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/costs/breakdown?start=not-valid", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
 func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }

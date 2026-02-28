@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { createQuery } from '@tanstack/svelte-query';
 	import { fetchTraces, type TraceRow } from '$lib/api';
+	import Spinner from '$lib/components/Spinner.svelte';
+	import ErrorAlert from '$lib/components/ErrorAlert.svelte';
 
 	let userID = $state('');
 	let model = $state('');
@@ -52,37 +54,37 @@
 			e.preventDefault();
 			applyFilters();
 		}}
-		class="flex flex-wrap gap-3 rounded-lg bg-gray-800 p-4"
+		class="flex flex-wrap gap-3 rounded-lg bg-gray-100 p-4 dark:bg-gray-800"
 	>
 		<input
 			bind:value={userID}
 			placeholder="User ID"
-			class="rounded bg-gray-700 px-3 py-1.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+			class="w-full rounded bg-gray-200 px-3 py-1.5 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white sm:w-auto"
 		/>
 		<input
 			bind:value={model}
 			placeholder="Model"
-			class="rounded bg-gray-700 px-3 py-1.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+			class="w-full rounded bg-gray-200 px-3 py-1.5 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white sm:w-auto"
 		/>
 		<input
 			bind:value={startDate}
 			type="datetime-local"
-			class="rounded bg-gray-700 px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+			class="w-full rounded bg-gray-200 px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white sm:w-auto"
 		/>
 		<input
 			bind:value={endDate}
 			type="datetime-local"
-			class="rounded bg-gray-700 px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+			class="w-full rounded bg-gray-200 px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white sm:w-auto"
 		/>
 		<select
 			bind:value={limit}
-			class="rounded bg-gray-700 px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+			class="w-full rounded bg-gray-200 px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white sm:w-auto"
 		>
 			<option value={25}>25 / page</option>
 			<option value={50}>50 / page</option>
 			<option value={100}>100 / page</option>
 		</select>
-		<button type="submit" class="rounded bg-indigo-600 px-4 py-1.5 text-sm font-medium hover:bg-indigo-500">
+		<button type="submit" class="rounded bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-indigo-500">
 			Filter
 		</button>
 		<button
@@ -94,26 +96,26 @@
 				endDate = '';
 				applyFilters();
 			}}
-			class="rounded bg-gray-700 px-4 py-1.5 text-sm hover:bg-gray-600"
+			class="rounded bg-gray-200 px-4 py-1.5 text-sm text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
 		>
 			Clear
 		</button>
 	</form>
 
 	{#if query.isLoading}
-		<div class="py-12 text-center text-gray-500">Loading…</div>
+		<div class="py-12 text-center"><Spinner /></div>
 	{:else if query.isError}
-		<div class="py-12 text-center text-red-400">Failed to load traces: {query.error?.message}</div>
+		<ErrorAlert message="Failed to load traces: {query.error?.message}" onRetry={() => query.refetch()} />
 	{:else}
-		<div class="rounded-lg bg-gray-800">
-			<div class="border-b border-gray-700 px-4 py-3 text-sm text-gray-400">
+		<div class="rounded-lg bg-gray-100 dark:bg-gray-800">
+			<div class="border-b border-gray-200 px-4 py-3 text-sm text-gray-600 dark:border-gray-700 dark:text-gray-400">
 				{total.toLocaleString()} traces
 				{#if total > 0} — showing {offset + 1}–{Math.min(offset + limit, total)}{/if}
 			</div>
 			<div class="overflow-x-auto">
 				<table class="w-full text-sm">
 					<thead>
-						<tr class="border-b border-gray-700 text-left text-gray-400">
+						<tr class="border-b border-gray-200 text-left text-gray-600 dark:border-gray-700 dark:text-gray-400">
 							<th class="px-4 py-2">Trace ID</th>
 							<th class="px-4 py-2">Model</th>
 							<th class="px-4 py-2 text-right">Tokens</th>
@@ -126,18 +128,18 @@
 					<tbody>
 						{#each traces as trace}
 							<tr
-								class="cursor-pointer border-b border-gray-700/50 transition-colors hover:bg-gray-700/50"
+								class="cursor-pointer border-b border-gray-200/50 transition-colors hover:bg-gray-200/50 dark:border-gray-700/50 dark:hover:bg-gray-700/50"
 								onclick={() => (selected = trace)}
 							>
-								<td class="px-4 py-2 font-mono text-xs text-indigo-300"
+								<td class="px-4 py-2 font-mono text-xs text-indigo-600 dark:text-indigo-300"
 									>{trace.trace_id.slice(0, 8)}…</td
 								>
-								<td class="px-4 py-2 text-gray-300">{trace.model || '—'}</td>
+								<td class="px-4 py-2 text-gray-700 dark:text-gray-300">{trace.model || '—'}</td>
 								<td class="px-4 py-2 text-right">{trace.total_tokens.toLocaleString()}</td>
 								<td class="px-4 py-2 text-right">${trace.cost.toFixed(6)}</td>
 								<td class="px-4 py-2 text-right">{trace.duration_ms}ms</td>
-								<td class="px-4 py-2 text-gray-400">{trace.user_id || '—'}</td>
-								<td class="px-4 py-2 text-xs text-gray-400">{formatDate(trace.created_at)}</td>
+								<td class="px-4 py-2 text-gray-600 dark:text-gray-400">{trace.user_id || '—'}</td>
+								<td class="px-4 py-2 text-xs text-gray-600 dark:text-gray-400">{formatDate(trace.created_at)}</td>
 							</tr>
 						{:else}
 							<tr>
@@ -148,21 +150,21 @@
 				</table>
 			</div>
 			{#if total > limit}
-				<div class="flex items-center justify-between border-t border-gray-700 px-4 py-3">
+				<div class="flex items-center justify-between border-t border-gray-200 px-4 py-3 dark:border-gray-700">
 					<button
 						onclick={prevPage}
 						disabled={offset === 0}
-						class="rounded bg-gray-700 px-3 py-1 text-sm disabled:opacity-40 hover:bg-gray-600"
+						class="rounded bg-gray-200 px-3 py-1 text-sm disabled:opacity-40 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600"
 					>
 						← Prev
 					</button>
-					<span class="text-sm text-gray-400">
+					<span class="text-sm text-gray-600 dark:text-gray-400">
 						Page {Math.floor(offset / limit) + 1} of {Math.ceil(total / limit)}
 					</span>
 					<button
 						onclick={nextPage}
 						disabled={offset + limit >= total}
-						class="rounded bg-gray-700 px-3 py-1 text-sm disabled:opacity-40 hover:bg-gray-600"
+						class="rounded bg-gray-200 px-3 py-1 text-sm disabled:opacity-40 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600"
 					>
 						Next →
 					</button>
@@ -180,14 +182,14 @@
 		onclick={() => (selected = null)}
 	>
 		<div
-			class="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-gray-800 shadow-xl"
+			class="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white shadow-xl dark:bg-gray-800"
 			onclick={(e) => e.stopPropagation()}
 			role="dialog"
 			aria-modal="true"
 		>
-			<div class="flex items-center justify-between border-b border-gray-700 px-6 py-4">
+			<div class="flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-gray-700">
 				<h2 class="font-semibold">Trace detail</h2>
-				<button onclick={() => (selected = null)} class="text-gray-400 hover:text-white">✕</button>
+				<button onclick={() => (selected = null)} class="text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">✕</button>
 			</div>
 			<div class="space-y-4 p-6 text-sm">
 				<div class="grid grid-cols-2 gap-4">
@@ -206,15 +208,15 @@
 						['Created at', formatDate(selected.created_at)],
 					] as [label, value]}
 						<div>
-							<p class="text-gray-400">{label}</p>
-							<p class="font-mono text-gray-100">{value || '—'}</p>
+							<p class="text-gray-600 dark:text-gray-400">{label}</p>
+							<p class="font-mono">{value || '—'}</p>
 						</div>
 					{/each}
 				</div>
 				<div>
-					<p class="mb-2 text-gray-400">Metadata</p>
+					<p class="mb-2 text-gray-600 dark:text-gray-400">Metadata</p>
 					<pre
-						class="overflow-x-auto rounded bg-gray-900 p-3 text-xs text-gray-300">{JSON.stringify(
+						class="overflow-x-auto rounded bg-gray-100 p-3 text-xs text-gray-700 dark:bg-gray-900 dark:text-gray-300">{JSON.stringify(
 							JSON.parse(selected.metadata || '{}'),
 							null,
 							2

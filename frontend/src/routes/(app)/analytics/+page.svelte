@@ -12,9 +12,9 @@
 		Legend,
 		ResponsiveContainer,
 		ComposedChart,
-		Line
-	} from 'recharts';
-	import { Chart_Tooltip as Tooltip } from '$lib/recharts';
+		Line,
+		Chart_Tooltip as Tooltip
+	} from '$lib/recharts';
 	import Spinner from '$lib/components/Spinner.svelte';
 	import ErrorAlert from '$lib/components/ErrorAlert.svelte';
 	import { isDark } from '$lib/stores/theme.svelte';

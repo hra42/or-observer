@@ -10,9 +10,9 @@
 		YAxis,
 		CartesianGrid,
 		Legend,
-		ResponsiveContainer
-	} from 'recharts';
-	import { Chart_Tooltip as Tooltip } from '$lib/recharts';
+		ResponsiveContainer,
+		Chart_Tooltip as Tooltip
+	} from '$lib/recharts';
 	import Spinner from '$lib/components/Spinner.svelte';
 	import ErrorAlert from '$lib/components/ErrorAlert.svelte';
 	import AlertBanner from '$lib/components/AlertBanner.svelte';

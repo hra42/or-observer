@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
 
 	let { form } = $props();
@@ -15,7 +14,7 @@
 		</div>
 	{/if}
 
-	<form method="POST" use:enhance>
+	<form method="POST">
 		<input type="hidden" name="redirect" value={page.url.searchParams.get('redirect') ?? '/dashboard'} />
 		<label for="key" class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">API Key</label>
 		<input

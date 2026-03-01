@@ -1,10 +1,10 @@
 import { QueryClient, dehydrate } from '@tanstack/svelte-query';
 import { fetchHealth, fetchMetricsHourly, fetchCostsBreakdown } from '$lib/api';
-import type { PageServerLoad } from './$types';
+import type { PageLoad } from './$types';
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageLoad = async ({ parent }) => {
+	const { apiKey } = await parent();
 	const queryClient = new QueryClient();
-	const apiKey = locals.apiKey;
 
 	const now = new Date();
 	const start24h = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
@@ -25,5 +25,5 @@ export const load: PageServerLoad = async ({ locals }) => {
 		})
 	]);
 
-	return { dehydratedState: dehydrate(queryClient), apiKey };
+	return { dehydratedState: dehydrate(queryClient) };
 };

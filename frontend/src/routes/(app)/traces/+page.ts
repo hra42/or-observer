@@ -1,10 +1,10 @@
 import { QueryClient, dehydrate } from '@tanstack/svelte-query';
 import { fetchTraces } from '$lib/api';
-import type { PageServerLoad } from './$types';
+import type { PageLoad } from './$types';
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageLoad = async ({ parent }) => {
+	const { apiKey } = await parent();
 	const queryClient = new QueryClient();
-	const apiKey = locals.apiKey;
 
 	await Promise.allSettled([
 		queryClient.prefetchQuery({
@@ -13,5 +13,5 @@ export const load: PageServerLoad = async ({ locals }) => {
 		})
 	]);
 
-	return { dehydratedState: dehydrate(queryClient), apiKey };
+	return { dehydratedState: dehydrate(queryClient) };
 };

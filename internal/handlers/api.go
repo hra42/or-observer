@@ -186,7 +186,7 @@ func TracesHandler(client *db.Client) http.HandlerFunc {
 			writeError(w, http.StatusInternalServerError, "query failed: "+err.Error())
 			return
 		}
-		defer rows.Close()
+		defer func() { _ = rows.Close() }()
 
 		traces := []traceRow{}
 		for rows.Next() {
@@ -303,7 +303,7 @@ func MetricsHourlyHandler(client *db.Client) http.HandlerFunc {
 			writeError(w, http.StatusInternalServerError, "query failed: "+err.Error())
 			return
 		}
-		defer rows.Close()
+		defer func() { _ = rows.Close() }()
 
 		metrics := []metricRow{}
 		for rows.Next() {
@@ -433,7 +433,7 @@ func CostsBreakdownHandler(client *db.Client) http.HandlerFunc {
 			writeError(w, http.StatusInternalServerError, "query failed: "+err.Error())
 			return
 		}
-		defer rows.Close()
+		defer func() { _ = rows.Close() }()
 
 		breakdown := []breakdownRow{}
 		for rows.Next() {

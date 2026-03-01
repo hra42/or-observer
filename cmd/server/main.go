@@ -43,7 +43,7 @@ func main() {
 	if err != nil {
 		logger.Fatal("failed to init database", zap.Error(err))
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	// Set package-level logger for API handlers.
 	handlers.SetLogger(logger)

@@ -5,19 +5,13 @@ when:
     - manual
 
 steps:
-  install:
-    image: node:22-alpine
-    directory: frontend
-    commands:
-      - npm ci
-
   lint-check:
-    image: node:22-alpine
+    image: node:lts-alpine
     directory: frontend
     commands:
       - npm ci
-      - npx svelte-kit sync
-      - npx svelte-check --tsconfig ./tsconfig.json
+      - ./node_modules/.bin/svelte-kit sync
+      - ./node_modules/.bin/svelte-check --tsconfig ./tsconfig.json
 
   dockerfile-validation:
     image: hadolint/hadolint:latest-alpine
@@ -25,12 +19,13 @@ steps:
       - hadolint frontend/Dockerfile || true
 
   build-test:
-    image: node:22-alpine
+    image: node:lts-alpine
     directory: frontend
     commands:
-      - npm ci
       - npm run build
       - echo "Frontend build passed"
+    depends_on:
+      - lint-check
 
   build-amd64:
     image: woodpeckerci/plugin-docker-buildx:6.0.3

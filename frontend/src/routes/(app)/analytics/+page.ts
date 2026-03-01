@@ -1,10 +1,8 @@
-import { QueryClient, dehydrate } from '@tanstack/svelte-query';
 import { fetchCostsBreakdown } from '$lib/api';
 import type { PageLoad } from './$types';
 
 export const load: PageLoad = async ({ parent }) => {
-	const { apiKey } = await parent();
-	const queryClient = new QueryClient();
+	const { queryClient, apiKey } = await parent();
 
 	await Promise.allSettled([
 		queryClient.prefetchQuery({
@@ -12,6 +10,4 @@ export const load: PageLoad = async ({ parent }) => {
 			queryFn: () => fetchCostsBreakdown('model', 'daily', undefined, undefined, apiKey)
 		})
 	]);
-
-	return { dehydratedState: dehydrate(queryClient) };
 };

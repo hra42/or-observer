@@ -4,7 +4,7 @@ go 1.26
 
 require (
 	github.com/duckdb/duckdb-go/v2 v2.5.5
-	github.com/hra42/openrouter-go v1.5.1
+	github.com/hra42/openrouter-go v1.5.2
 	go.uber.org/zap v1.27.1
 )
 

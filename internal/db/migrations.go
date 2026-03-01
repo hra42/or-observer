@@ -54,5 +54,39 @@ func runMigrations(ctx context.Context, db *sql.DB) error {
 		}
 	}
 
+	// Backfill prompt_tokens, completion_tokens, total_tokens, and cost from
+	// metadata JSON for rows inserted before the SDK v1.5.2 field extraction fix.
+	backfill := []string{
+		`UPDATE lake.traces
+		 SET prompt_tokens = CAST(json_extract_string(metadata, '$.gen_ai.usage.input_tokens') AS INTEGER)
+		 WHERE (prompt_tokens IS NULL OR prompt_tokens = 0)
+		   AND json_extract_string(metadata, '$.gen_ai.usage.input_tokens') IS NOT NULL`,
+
+		`UPDATE lake.traces
+		 SET completion_tokens = CAST(json_extract_string(metadata, '$.gen_ai.usage.output_tokens') AS INTEGER)
+		 WHERE (completion_tokens IS NULL OR completion_tokens = 0)
+		   AND json_extract_string(metadata, '$.gen_ai.usage.output_tokens') IS NOT NULL`,
+
+		`UPDATE lake.traces
+		 SET total_tokens = CAST(json_extract_string(metadata, '$.gen_ai.usage.input_tokens') AS INTEGER)
+		              + CAST(json_extract_string(metadata, '$.gen_ai.usage.output_tokens') AS INTEGER)
+		 WHERE (total_tokens IS NULL OR total_tokens = 0)
+		   AND json_extract_string(metadata, '$.gen_ai.usage.input_tokens') IS NOT NULL
+		   AND json_extract_string(metadata, '$.gen_ai.usage.output_tokens') IS NOT NULL`,
+
+		`UPDATE lake.traces
+		 SET cost = CAST(json_extract_string(metadata, '$.gen_ai.usage.total_cost') AS DOUBLE)
+		 WHERE (cost IS NULL OR cost = 0)
+		   AND json_extract_string(metadata, '$.gen_ai.usage.total_cost') IS NOT NULL`,
+	}
+
+	for _, stmt := range backfill {
+		if _, err := db.ExecContext(ctx, stmt); err != nil {
+			// Non-fatal: log but don't block startup if backfill fails
+			// (e.g., metadata column doesn't contain expected keys)
+			_ = err
+		}
+	}
+
 	return nil
 }

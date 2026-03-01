@@ -37,6 +37,12 @@ func main() {
 	if addr == "" {
 		addr = ":8080"
 	}
+	apiKey := os.Getenv("API_KEY")
+	if apiKey != "" {
+		logger.Info("API key authentication enabled")
+	} else {
+		logger.Info("API key authentication disabled (no API_KEY set)")
+	}
 
 	// Initialize database.
 	client, err := db.NewClient(dbPath)
@@ -52,11 +58,11 @@ func main() {
 	startTime := time.Now()
 	mux := http.NewServeMux()
 
-	mux.Handle("/webhook", handlers.WithCORS(handlers.NewWebhookHandler(client, logger)))
+	mux.Handle("/webhook", handlers.WithCORS(handlers.WithAuth(apiKey, handlers.NewWebhookHandler(client, logger))))
 	mux.Handle("/health", handlers.WithCORS(handlers.HealthHandler(client, startTime)))
-	mux.Handle("/api/traces", handlers.WithCORS(handlers.TracesHandler(client)))
-	mux.Handle("/api/metrics/hourly", handlers.WithCORS(handlers.MetricsHourlyHandler(client)))
-	mux.Handle("/api/costs/breakdown", handlers.WithCORS(handlers.CostsBreakdownHandler(client)))
+	mux.Handle("/api/traces", handlers.WithCORS(handlers.WithAuth(apiKey, handlers.TracesHandler(client))))
+	mux.Handle("/api/metrics/hourly", handlers.WithCORS(handlers.WithAuth(apiKey, handlers.MetricsHourlyHandler(client))))
+	mux.Handle("/api/costs/breakdown", handlers.WithCORS(handlers.WithAuth(apiKey, handlers.CostsBreakdownHandler(client))))
 
 	// Start background worker for hourly aggregation + data retention.
 	workerCtx, workerCancel := context.WithCancel(context.Background())

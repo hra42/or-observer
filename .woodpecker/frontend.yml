@@ -40,8 +40,6 @@ steps:
       context: frontend
       buildkit_oci_max_parallelism: 32
       output: type=image,push=true
-      build_args:
-        - VITE_API_URL=https://observce.hra42.com
       cache_images:
         - registry.hra42.com/or-observer-frontend:cache-amd64
     when:
@@ -61,8 +59,6 @@ steps:
       context: frontend
       buildkit_oci_max_parallelism: 4
       output: type=image,push=true
-      build_args:
-        - VITE_API_URL=https://observce.hra42.com
       cache_images:
         - registry.hra42.com/or-observer-frontend:cache-arm64
       ssh_key:

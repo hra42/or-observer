@@ -10,6 +10,7 @@
 	];
 
 	let menuOpen = $state(false);
+	let authRequired = $derived(page.data.authRequired ?? false);
 </script>
 
 <nav class="border-b border-gray-200 bg-gray-50 px-4 dark:border-gray-800 dark:bg-gray-900">
@@ -32,6 +33,16 @@
 		</div>
 
 		<div class="flex items-center gap-2">
+			<!-- Logout button -->
+			{#if authRequired}
+				<a
+					href="/logout"
+					class="rounded px-3 py-1 text-sm text-gray-600 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-800"
+				>
+					Logout
+				</a>
+			{/if}
+
 			<!-- Theme toggle -->
 			<button
 				onclick={toggleTheme}
@@ -80,6 +91,15 @@
 					{link.label}
 				</a>
 			{/each}
+			{#if authRequired}
+				<a
+					href="/logout"
+					onclick={() => (menuOpen = false)}
+					class="block px-4 py-2 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+				>
+					Logout
+				</a>
+			{/if}
 		</div>
 	{/if}
 </nav>

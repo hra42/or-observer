@@ -107,29 +107,25 @@ func TraceFromOpenRouter(t openrouter.BroadcastTrace) Trace {
 
 	metaJSON, _ := json.Marshal(merged)
 
-	// Prefer canonical token/cost fields from SDK when available.
-	promptTokens := t.PromptTokens
-	if t.InputTokens > 0 {
-		promptTokens = t.InputTokens
-	}
-	completionTokens := t.CompletionTokens
-	if t.OutputTokens > 0 {
-		completionTokens = t.OutputTokens
-	}
-	cost := t.Cost
-	if t.TotalCost > 0 {
-		cost = t.TotalCost
-	} else if cost == 0 && (t.InputCost+t.OutputCost) > 0 {
+	// Use canonical fields; fall back to input+output cost when total is absent.
+	cost := t.TotalCost
+	if cost == 0 && (t.InputCost+t.OutputCost) > 0 {
 		cost = t.InputCost + t.OutputCost
+	}
+
+	// Resolve model: prefer ResponseModel over RequestModel.
+	model := t.ResponseModel
+	if model == "" {
+		model = t.RequestModel
 	}
 
 	return Trace{
 		TraceID:          t.TraceID,
 		SpanID:           t.SpanID,
 		SpanName:         t.SpanName,
-		Model:            t.Model,
-		PromptTokens:     promptTokens,
-		CompletionTokens: completionTokens,
+		Model:            model,
+		PromptTokens:     t.InputTokens,
+		CompletionTokens: t.OutputTokens,
 		TotalTokens:      t.TotalTokens,
 		Cost:             cost,
 		DurationMs:       int(t.Duration.Milliseconds()),

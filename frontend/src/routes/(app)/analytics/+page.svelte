@@ -1,23 +1,12 @@
 <script lang="ts">
-	import { browser } from '$app/environment';
 	import { page } from '$app/state';
 	import { createQuery } from '@tanstack/svelte-query';
 	import { fetchCostsBreakdown, fetchMetricsHourly, type MetricRow, type BreakdownRow } from '$lib/api';
-	import {
-		BarChart,
-		Bar,
-		XAxis,
-		YAxis,
-		CartesianGrid,
-		Legend,
-		ResponsiveContainer,
-		ComposedChart,
-		Line,
-		Chart_Tooltip as Tooltip
-	} from '$lib/recharts';
+	import { BarChart, LineChart } from 'layerchart';
+	import { scaleBand } from 'd3-scale';
+	import * as Chart from '$lib/components/ui/chart/index.js';
 	import Spinner from '$lib/components/Spinner.svelte';
 	import ErrorAlert from '$lib/components/ErrorAlert.svelte';
-	import { isDark } from '$lib/stores/theme.svelte';
 
 	let apiKey = $derived(page.data.apiKey ?? '');
 
@@ -26,14 +15,12 @@
 	let activeTab = $state<'costs' | 'latency'>('costs');
 	let latencyGroupBy = $state<'model' | 'user' | ''>('');
 
-	// Convert a datetime-local string (YYYY-MM-DDTHH:mm, no tz) to RFC3339 UTC.
 	function toRFC3339(local: string): string {
 		if (!local) return '';
 		return new Date(local).toISOString();
 	}
 
 	const now = new Date();
-	// datetime-local inputs expect "YYYY-MM-DDTHH:mm" format.
 	function toLocalInput(d: Date): string {
 		return d.toISOString().slice(0, 16);
 	}
@@ -82,8 +69,15 @@
 		}))
 	);
 
-	let gridStroke = $derived(isDark() ? '#374151' : '#e5e7eb');
-	let axisStroke = $derived(isDark() ? '#9ca3af' : '#6b7280');
+	const costChartConfig = {
+		cost: { label: 'Cost ($)', color: '#818cf8' }
+	} satisfies Chart.ChartConfig;
+
+	const latencyChartConfig = {
+		avg: { label: 'Avg (ms)', color: '#6366f1' },
+		p95: { label: 'P95 (ms)', color: '#f59e0b' },
+		p99: { label: 'P99 (ms)', color: '#ef4444' }
+	} satisfies Chart.ChartConfig;
 
 	const inputClass =
 		'rounded bg-gray-200 px-3 py-1 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white';
@@ -149,22 +143,24 @@
 		{:else}
 			<div class="rounded-lg bg-gray-100 p-4 dark:bg-gray-800">
 				<h2 class="mb-4 text-lg font-semibold">Cost by {groupBy}</h2>
-				{#if browser}
-					<ResponsiveContainer width="100%" height={280}>
-						<BarChart data={costData} margin={{ top: 4, right: 16, left: 0, bottom: 40 }}>
-							<CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
-							<XAxis
-								dataKey="name"
-								stroke={axisStroke}
-								tick={{ fontSize: 10, angle: -30, textAnchor: 'end' }}
-							/>
-							<YAxis stroke={axisStroke} tick={{ fontSize: 11 }} />
-							<Tooltip />
-							<Legend />
-							<Bar dataKey="cost" name="Cost ($)" fill="#818cf8" />
-						</BarChart>
-					</ResponsiveContainer>
-				{/if}
+				<Chart.Container config={costChartConfig} class="min-h-[280px] w-full">
+					<BarChart
+						data={costData}
+						xScale={scaleBand().padding(0.25)}
+						x="name"
+						axis="x"
+						series={[{ key: 'cost', label: costChartConfig.cost.label, color: costChartConfig.cost.color }]}
+						props={{
+							bars: { stroke: 'none', rounded: 'all', radius: 4 },
+							highlight: { area: { fill: 'none' } },
+							xAxis: { format: (d: string) => d, tickLabelProps: { rotate: -30, textAnchor: 'end' } }
+						}}
+					>
+						{#snippet tooltip()}
+							<Chart.Tooltip />
+						{/snippet}
+					</BarChart>
+				</Chart.Container>
 			</div>
 
 			<div class="rounded-lg bg-gray-100 p-4 dark:bg-gray-800">
@@ -224,39 +220,28 @@
 		{:else}
 			<div class="rounded-lg bg-gray-100 p-4 dark:bg-gray-800">
 				<h2 class="mb-4 text-lg font-semibold">Latency distribution over time</h2>
-				{#if browser}
-					<ResponsiveContainer width="100%" height={300}>
-						<ComposedChart data={latencyData}>
-							<CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
-							<XAxis
-								dataKey="hour"
-								stroke={axisStroke}
-								tick={{ fontSize: 10, angle: -30, textAnchor: 'end' }}
-								height={50}
-							/>
-							<YAxis stroke={axisStroke} tick={{ fontSize: 11 }} unit="ms" />
-							<Tooltip />
-							<Legend />
-							<Bar dataKey="avg" name="Avg (ms)" fill="#6366f1" opacity={0.6} />
-							<Line
-								type="monotone"
-								dataKey="p95"
-								name="P95 (ms)"
-								stroke="#f59e0b"
-								dot={false}
-								strokeWidth={2}
-							/>
-							<Line
-								type="monotone"
-								dataKey="p99"
-								name="P99 (ms)"
-								stroke="#ef4444"
-								dot={false}
-								strokeWidth={2}
-							/>
-						</ComposedChart>
-					</ResponsiveContainer>
-				{/if}
+				<Chart.Container config={latencyChartConfig} class="min-h-[300px] w-full">
+					<LineChart
+						data={latencyData}
+						x="hour"
+						xScale={scaleBand()}
+						axis="x"
+						legend
+						series={[
+							{ key: 'avg', label: latencyChartConfig.avg.label, color: latencyChartConfig.avg.color },
+							{ key: 'p95', label: latencyChartConfig.p95.label, color: latencyChartConfig.p95.color },
+							{ key: 'p99', label: latencyChartConfig.p99.label, color: latencyChartConfig.p99.color }
+						]}
+						props={{
+							spline: { strokeWidth: 2 },
+							xAxis: { format: (d: string) => d, tickLabelProps: { rotate: -30, textAnchor: 'end' } }
+						}}
+					>
+						{#snippet tooltip()}
+							<Chart.Tooltip />
+						{/snippet}
+					</LineChart>
+				</Chart.Container>
 			</div>
 		{/if}
 	{/if}

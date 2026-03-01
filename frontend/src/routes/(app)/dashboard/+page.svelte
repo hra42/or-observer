@@ -1,22 +1,13 @@
 <script lang="ts">
-	import { browser } from '$app/environment';
 	import { page } from '$app/state';
 	import { createQuery } from '@tanstack/svelte-query';
 	import { fetchMetricsHourly, fetchCostsBreakdown, fetchHealth, type MetricRow } from '$lib/api';
-	import {
-		LineChart,
-		Line,
-		XAxis,
-		YAxis,
-		CartesianGrid,
-		Legend,
-		ResponsiveContainer,
-		Chart_Tooltip as Tooltip
-	} from '$lib/recharts';
+	import { LineChart } from 'layerchart';
+	import { scaleBand } from 'd3-scale';
+	import * as Chart from '$lib/components/ui/chart/index.js';
 	import Spinner from '$lib/components/Spinner.svelte';
 	import ErrorAlert from '$lib/components/ErrorAlert.svelte';
 	import AlertBanner from '$lib/components/AlertBanner.svelte';
-	import { isDark } from '$lib/stores/theme.svelte';
 
 	let apiKey = $derived(page.data.apiKey ?? '');
 
@@ -65,8 +56,10 @@
 			.reverse();
 	});
 
-	let gridStroke = $derived(isDark() ? '#374151' : '#e5e7eb');
-	let axisStroke = $derived(isDark() ? '#9ca3af' : '#6b7280');
+	const chartConfig = {
+		cost: { label: 'Cost ($)', color: '#818cf8' },
+		requests: { label: 'Requests', color: '#34d399' }
+	} satisfies Chart.ChartConfig;
 </script>
 
 <div class="space-y-6">
@@ -126,33 +119,28 @@
 			<ErrorAlert message="Failed to load metrics" onRetry={() => metricsQuery.refetch()} />
 		{:else if chartData.length === 0}
 			<div class="flex h-48 items-center justify-center text-gray-500 dark:text-gray-500">No data yet</div>
-		{:else if browser}
-			<ResponsiveContainer width="100%" height={240}>
-				<LineChart data={chartData}>
-					<CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
-					<XAxis dataKey="hour" stroke={axisStroke} tick={{ fontSize: 11 }} />
-					<YAxis yAxisId="left" stroke={axisStroke} tick={{ fontSize: 11 }} />
-					<YAxis yAxisId="right" orientation="right" stroke={axisStroke} tick={{ fontSize: 11 }} />
-					<Tooltip />
-					<Legend />
-					<Line
-						yAxisId="left"
-						type="monotone"
-						dataKey="cost"
-						stroke="#818cf8"
-						name="Cost ($)"
-						dot={false}
-					/>
-					<Line
-						yAxisId="right"
-						type="monotone"
-						dataKey="requests"
-						stroke="#34d399"
-						name="Requests"
-						dot={false}
-					/>
+		{:else}
+			<Chart.Container config={chartConfig} class="min-h-[240px] w-full">
+				<LineChart
+					data={chartData}
+					x="hour"
+					xScale={scaleBand()}
+					axis="x"
+					legend
+					series={[
+						{ key: 'cost', label: chartConfig.cost.label, color: chartConfig.cost.color },
+						{ key: 'requests', label: chartConfig.requests.label, color: chartConfig.requests.color }
+					]}
+					props={{
+						spline: { strokeWidth: 2 },
+						xAxis: { format: (d: string) => d }
+					}}
+				>
+					{#snippet tooltip()}
+						<Chart.Tooltip />
+					{/snippet}
 				</LineChart>
-			</ResponsiveContainer>
+			</Chart.Container>
 		{/if}
 	</div>
 

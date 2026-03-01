@@ -13,7 +13,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **Backend:** Go (`cmd/server/main.go`, `internal/`)
 - **Database:** DuckDB embedded with DuckLake extension (`github.com/duckdb/duckdb-go/v2`) — use the official duckdb-go/v2, NOT the legacy `marcboeker/go-duckdb`
-- **Frontend:** SvelteKit + Svelte 5 runes, TanStack Query v6, Tailwind CSS, Recharts
+- **Frontend:** SvelteKit + Svelte 5 runes, TanStack Query v6, Tailwind CSS, LayerChart v2 + shadcn-svelte
 - **OpenRouter SDK:** `github.com/hra42/openrouter-go` (local path via `replace` directive) — provides `BroadcastWebhookHandlerWithError` for OTLP JSON parsing
 
 ## Project Structure
@@ -42,7 +42,7 @@ frontend/
   src/routes/analytics/         # Cost breakdown + latency tabs with advanced filters
   src/routes/alerts/            # Alert threshold configuration (localStorage)
   src/lib/api.ts                # Typed API client (costs breakdown supports start/end)
-  src/lib/recharts.ts           # Recharts re-export with `any` cast (Svelte 5 compat fix)
+  src/lib/components/ui/chart/  # shadcn-svelte chart components (Container, Tooltip, utils)
   src/lib/stores/theme.svelte.ts # Dark/light mode store with localStorage persistence
   src/lib/components/Nav.svelte # Navigation bar + theme toggle + mobile hamburger
   src/lib/components/Spinner.svelte   # Animated loading spinner
@@ -90,7 +90,7 @@ const query = createQuery(() => ({
 <p>{query.data?.total}</p>
 ```
 
-**Recharts `Tooltip` type incompatibility with Svelte 5:** Recharts hasn't updated its typedefs for Svelte 5's `Component` type. Fix: re-export with `as any` cast from `src/lib/recharts.ts` and import `Chart_Tooltip` instead of `Tooltip`.
+**LayerChart v2 (Svelte-native charts):** Charts use `layerchart` simplified components (`LineChart`, `BarChart`) wrapped in shadcn-svelte `Chart.Container` with a `chartConfig` for colors/labels. Tooltips use `Chart.Tooltip` via Svelte 5 `{#snippet tooltip()}` pattern. No `{#if browser}` guards needed — LayerChart is SSR-safe.
 
 ### Structured Logging
 `go.uber.org/zap` is used throughout. The webhook handler receives a logger via constructor; API handlers use a package-level logger set via `handlers.SetLogger()`. Default is `zap.NewNop()` so tests pass without logger init.

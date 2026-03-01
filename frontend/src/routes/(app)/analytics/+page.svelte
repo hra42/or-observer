@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
+	import { page } from '$app/state';
 	import { createQuery } from '@tanstack/svelte-query';
 	import { fetchCostsBreakdown, fetchMetricsHourly, type MetricRow, type BreakdownRow } from '$lib/api';
 	import {
@@ -17,6 +18,8 @@
 	import Spinner from '$lib/components/Spinner.svelte';
 	import ErrorAlert from '$lib/components/ErrorAlert.svelte';
 	import { isDark } from '$lib/stores/theme.svelte';
+
+	let apiKey = $derived(page.data.apiKey ?? '');
 
 	let groupBy = $state<'model' | 'user'>('model');
 	let costPeriod = $state<'hourly' | 'daily' | 'overall'>('daily');
@@ -46,13 +49,14 @@
 				groupBy,
 				costPeriod,
 				costRangeStart ? toRFC3339(costRangeStart) : undefined,
-				costRangeEnd ? toRFC3339(costRangeEnd) : undefined
+				costRangeEnd ? toRFC3339(costRangeEnd) : undefined,
+				apiKey
 			)
 	}));
 
 	const latencyQuery = createQuery(() => ({
 		queryKey: ['metrics', 'latency', rangeStart, rangeEnd, latencyGroupBy],
-		queryFn: () => fetchMetricsHourly(toRFC3339(rangeStart), toRFC3339(rangeEnd), latencyGroupBy)
+		queryFn: () => fetchMetricsHourly(toRFC3339(rangeStart), toRFC3339(rangeEnd), latencyGroupBy, apiKey)
 	}));
 
 	let latencyData = $derived(

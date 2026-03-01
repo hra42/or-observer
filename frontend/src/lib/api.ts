@@ -1,4 +1,11 @@
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080';
+import { env } from '$env/dynamic/public';
+
+const API_BASE = env.PUBLIC_API_URL ?? 'http://localhost:8080';
+
+function authHeaders(apiKey?: string): HeadersInit {
+	if (!apiKey) return {};
+	return { Authorization: `Bearer ${apiKey}` };
+}
 
 export interface TraceRow {
 	id: string;
@@ -33,12 +40,12 @@ export interface TracesQuery {
 	offset?: number;
 }
 
-export async function fetchTraces(params: TracesQuery = {}): Promise<TracesResponse> {
+export async function fetchTraces(params: TracesQuery = {}, apiKey?: string): Promise<TracesResponse> {
 	const url = new URL('/api/traces', API_BASE);
 	Object.entries(params).forEach(([k, v]) => {
 		if (v != null && v !== '') url.searchParams.set(k, String(v));
 	});
-	const res = await fetch(url.toString());
+	const res = await fetch(url.toString(), { headers: authHeaders(apiKey) });
 	if (!res.ok) throw new Error(`/api/traces: ${res.status}`);
 	return res.json();
 }
@@ -62,13 +69,14 @@ export interface MetricsResponse {
 export async function fetchMetricsHourly(
 	start?: string,
 	end?: string,
-	groupBy?: 'model' | 'user' | ''
+	groupBy?: 'model' | 'user' | '',
+	apiKey?: string
 ): Promise<MetricsResponse> {
 	const url = new URL('/api/metrics/hourly', API_BASE);
 	if (start) url.searchParams.set('start', start);
 	if (end) url.searchParams.set('end', end);
 	if (groupBy) url.searchParams.set('groupBy', groupBy);
-	const res = await fetch(url.toString());
+	const res = await fetch(url.toString(), { headers: authHeaders(apiKey) });
 	if (!res.ok) throw new Error(`/api/metrics/hourly: ${res.status}`);
 	return res.json();
 }
@@ -91,25 +99,26 @@ export async function fetchCostsBreakdown(
 	groupBy: 'model' | 'user' = 'model',
 	period: 'hourly' | 'daily' | 'overall' = 'daily',
 	start?: string,
-	end?: string
+	end?: string,
+	apiKey?: string
 ): Promise<CostsResponse> {
 	const url = new URL('/api/costs/breakdown', API_BASE);
 	url.searchParams.set('groupBy', groupBy);
 	url.searchParams.set('period', period);
 	if (start) url.searchParams.set('start', start);
 	if (end) url.searchParams.set('end', end);
-	const res = await fetch(url.toString());
+	const res = await fetch(url.toString(), { headers: authHeaders(apiKey) });
 	if (!res.ok) throw new Error(`/api/costs/breakdown: ${res.status}`);
 	return res.json();
 }
 
-export async function fetchHealth(): Promise<{
+export async function fetchHealth(apiKey?: string): Promise<{
 	status: string;
 	database: string;
 	traces_ingested: number;
 	uptime_seconds: number;
 }> {
-	const res = await fetch(`${API_BASE}/health`);
+	const res = await fetch(`${API_BASE}/health`, { headers: authHeaders(apiKey) });
 	if (!res.ok) throw new Error(`/health: ${res.status}`);
 	return res.json();
 }

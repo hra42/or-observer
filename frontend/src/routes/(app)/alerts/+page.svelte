@@ -1,7 +1,10 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
+	import { page } from '$app/state';
 	import { createQuery } from '@tanstack/svelte-query';
 	import { fetchMetricsHourly, type MetricRow } from '$lib/api';
+
+	let apiKey = $derived(page.data.apiKey ?? '');
 
 	const THRESHOLDS_KEY = 'or-observer-alert-thresholds';
 
@@ -34,7 +37,7 @@
 
 	const metricsQuery = createQuery(() => ({
 		queryKey: ['metrics', 'hourly', '24h-alerts'],
-		queryFn: () => fetchMetricsHourly(start24h, now.toISOString(), '')
+		queryFn: () => fetchMetricsHourly(start24h, now.toISOString(), '', apiKey)
 	}));
 
 	let totalCost = $derived(

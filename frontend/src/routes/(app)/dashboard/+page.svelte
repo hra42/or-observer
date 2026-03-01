@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
+	import { page } from '$app/state';
 	import { createQuery } from '@tanstack/svelte-query';
 	import { fetchMetricsHourly, fetchCostsBreakdown, fetchHealth, type MetricRow } from '$lib/api';
 	import {
@@ -17,24 +18,26 @@
 	import AlertBanner from '$lib/components/AlertBanner.svelte';
 	import { isDark } from '$lib/stores/theme.svelte';
 
+	let apiKey = $derived(page.data.apiKey ?? '');
+
 	const now = new Date();
 	const start24h = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
 	const end24h = now.toISOString();
 
 	const healthQuery = createQuery(() => ({
 		queryKey: ['health'],
-		queryFn: fetchHealth,
+		queryFn: () => fetchHealth(apiKey),
 		refetchInterval: 30_000
 	}));
 
 	const metricsQuery = createQuery(() => ({
 		queryKey: ['metrics', 'hourly', '24h'],
-		queryFn: () => fetchMetricsHourly(start24h, end24h, 'model')
+		queryFn: () => fetchMetricsHourly(start24h, end24h, 'model', apiKey)
 	}));
 
 	const costsQuery = createQuery(() => ({
 		queryKey: ['costs', 'model', 'daily'],
-		queryFn: () => fetchCostsBreakdown('model', 'daily')
+		queryFn: () => fetchCostsBreakdown('model', 'daily', undefined, undefined, apiKey)
 	}));
 
 	let totalCost24h = $derived(

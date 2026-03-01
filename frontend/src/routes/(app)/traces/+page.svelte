@@ -1,10 +1,13 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import { createQuery } from '@tanstack/svelte-query';
 	import { fetchTraces, type TraceRow } from '$lib/api';
 	import Spinner from '$lib/components/Spinner.svelte';
 	import ErrorAlert from '$lib/components/ErrorAlert.svelte';
 	import TraceMessages from '$lib/components/TraceMessages.svelte';
 	import TraceMetadata from '$lib/components/TraceMetadata.svelte';
+
+	let apiKey = $derived(page.data.apiKey ?? '');
 
 	let userID = $state('');
 	let model = $state('');
@@ -34,7 +37,7 @@
 				end_date: endDate ? toRFC3339(endDate) : undefined,
 				limit,
 				offset
-			})
+			}, apiKey)
 	}));
 
 	let total = $derived(query.data?.total ?? 0);

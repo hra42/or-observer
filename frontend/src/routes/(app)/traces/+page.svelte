@@ -16,7 +16,7 @@
 	let limit = $state(50);
 	let offset = $state(0);
 	let selected = $state<TraceRow | null>(null);
-	let activeTab = $state<'messages' | 'metadata'>('messages');
+	let activeTab = $state<'messages' | 'metadata' | 'raw'>('messages');
 
 	let parsedMetadata = $derived<Record<string, unknown>>(
 		selected ? (() => { try { return JSON.parse(selected.metadata || '{}'); } catch { return {}; } })() : {}
@@ -256,13 +256,31 @@
 						>
 							Metadata
 						</button>
+						<button
+							onclick={() => (activeTab = 'raw')}
+							class="border-b-2 px-1 pb-2 text-sm font-medium transition-colors {activeTab === 'raw' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}"
+						>
+							Raw
+						</button>
 					</div>
 				</div>
 
 				{#if activeTab === 'messages'}
 					<TraceMessages metadata={parsedMetadata} />
-				{:else}
+				{:else if activeTab === 'metadata'}
 					<TraceMetadata metadata={parsedMetadata} />
+				{:else}
+					<div class="relative">
+						<button
+							onclick={() => {
+								navigator.clipboard.writeText(JSON.stringify(parsedMetadata, null, 2));
+							}}
+							class="absolute right-2 top-2 rounded bg-gray-200 px-2 py-1 text-xs text-gray-600 hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-300 dark:hover:bg-gray-500"
+						>
+							Copy
+						</button>
+						<pre class="max-h-[50vh] overflow-auto rounded bg-gray-100 p-4 text-xs text-gray-800 dark:bg-gray-900 dark:text-gray-200">{JSON.stringify(parsedMetadata, null, 2)}</pre>
+					</div>
 				{/if}
 			</div>
 		</div>

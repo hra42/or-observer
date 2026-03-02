@@ -14,7 +14,8 @@
 		system: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
 		user: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
 		assistant: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-		tool: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
+		tool: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+		reasoning: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
 	};
 
 	function badgeClass(role: string): string {
@@ -100,6 +101,15 @@
 				// { role, content } directly
 				if ('role' in obj && 'content' in obj) {
 					return [{ role: String(obj.role), content: String(obj.content) }];
+				}
+				// { completion: "...", reasoning: "..." } — OpenRouter format
+				if (typeof obj.completion === 'string') {
+					const msgs: ChatMessage[] = [];
+					if (typeof obj.reasoning === 'string') {
+						msgs.push({ role: 'reasoning', content: obj.reasoning });
+					}
+					msgs.push({ role: 'assistant', content: obj.completion });
+					return msgs;
 				}
 			}
 

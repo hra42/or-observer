@@ -35,23 +35,39 @@
 
 	function extractInputMessages(meta: Record<string, unknown>): ChatMessage[] {
 		for (const key of ['gen_ai.prompt', 'span.input', 'trace.input']) {
-			const parsed = tryParseJSON(meta[key]);
-			if (!parsed || typeof parsed !== 'object') continue;
+			const raw = meta[key];
+			if (raw === undefined || raw === null || raw === '') continue;
 
-			const obj = parsed as Record<string, unknown>;
-			// { messages: [{role, content}, ...] }
-			if (Array.isArray(obj.messages)) {
-				return obj.messages.filter(
-					(m: unknown): m is ChatMessage =>
-						typeof m === 'object' && m !== null && 'role' in m && 'content' in m
-				);
+			const parsed = tryParseJSON(raw);
+
+			// Parsed as a JSON object — check structured formats
+			if (parsed && typeof parsed === 'object') {
+				const obj = parsed as Record<string, unknown>;
+				// { messages: [{role, content}, ...] }
+				if (Array.isArray(obj.messages)) {
+					return obj.messages.filter(
+						(m: unknown): m is ChatMessage =>
+							typeof m === 'object' && m !== null && 'role' in m && 'content' in m
+					);
+				}
+				// Direct array
+				if (Array.isArray(parsed)) {
+					const msgs = (parsed as unknown[]).filter(
+						(m: unknown): m is ChatMessage =>
+							typeof m === 'object' && m !== null && 'role' in m && 'content' in m
+					);
+					if (msgs.length > 0) return msgs;
+				}
+				// { role, content } directly
+				if ('role' in obj && 'content' in obj) {
+					return [{ role: String(obj.role), content: String(obj.content) }];
+				}
 			}
-			// Direct array
-			if (Array.isArray(parsed)) {
-				return (parsed as unknown[]).filter(
-					(m: unknown): m is ChatMessage =>
-						typeof m === 'object' && m !== null && 'role' in m && 'content' in m
-				);
+
+			// Plain string content
+			if (typeof raw === 'string') {
+				const content = typeof parsed === 'string' ? parsed : raw;
+				return [{ role: 'user', content }];
 			}
 		}
 		return [];
@@ -59,27 +75,38 @@
 
 	function extractOutputMessages(meta: Record<string, unknown>): ChatMessage[] {
 		for (const key of ['gen_ai.completion', 'span.output', 'trace.output']) {
-			const parsed = tryParseJSON(meta[key]);
-			if (!parsed || typeof parsed !== 'object') continue;
+			const raw = meta[key];
+			if (raw === undefined || raw === null || raw === '') continue;
 
-			const obj = parsed as Record<string, unknown>;
-			// { choices: [{message: {role, content}}] }
-			if (Array.isArray(obj.choices)) {
-				return obj.choices
-					.map((c: Record<string, unknown>) => c.message as ChatMessage | undefined)
-					.filter((m): m is ChatMessage => !!m && typeof m.content === 'string');
-			}
-			// { role, content } directly
-			if ('role' in obj && 'content' in obj) {
-				return [{ role: String(obj.role), content: String(obj.content) }];
-			}
-			// Direct string content
-			if (typeof meta[key] === 'string') {
-				const str = meta[key] as string;
-				// Only use if it wasn't valid JSON (i.e. it's raw text)
-				if (!parsed) {
-					return [{ role: 'assistant', content: str }];
+			const parsed = tryParseJSON(raw);
+
+			// Parsed as a JSON object — check structured formats
+			if (parsed && typeof parsed === 'object') {
+				const obj = parsed as Record<string, unknown>;
+				// { choices: [{message: {role, content}}] }
+				if (Array.isArray(obj.choices)) {
+					return obj.choices
+						.map((c: Record<string, unknown>) => c.message as ChatMessage | undefined)
+						.filter((m): m is ChatMessage => !!m && typeof m.content === 'string');
 				}
+				// Array of {role, content}
+				if (Array.isArray(parsed)) {
+					const msgs = (parsed as unknown[]).filter(
+						(m: unknown): m is ChatMessage =>
+							typeof m === 'object' && m !== null && 'role' in m && 'content' in m
+					);
+					if (msgs.length > 0) return msgs;
+				}
+				// { role, content } directly
+				if ('role' in obj && 'content' in obj) {
+					return [{ role: String(obj.role), content: String(obj.content) }];
+				}
+			}
+
+			// Plain string content (not valid JSON, or a JSON string primitive)
+			if (typeof raw === 'string') {
+				const content = typeof parsed === 'string' ? parsed : raw;
+				return [{ role: 'assistant', content }];
 			}
 		}
 		return [];

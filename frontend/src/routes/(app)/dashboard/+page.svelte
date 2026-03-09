@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { page } from '$app/state';
 	import { createQuery } from '@tanstack/svelte-query';
 	import { fetchMetricsHourly, fetchCostsBreakdown, fetchHealth, type MetricRow } from '$lib/api';
@@ -11,9 +12,35 @@
 
 	let apiKey = $derived(page.data.apiKey ?? '');
 
-	const now = new Date();
-	const start24h = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
-	const end24h = now.toISOString();
+	// Time range configuration
+	const RANGE_STORAGE_KEY = 'or-observer-dashboard-range';
+	const rangeOptions = [
+		{ value: 1, label: '24h' },
+		{ value: 7, label: '7d' },
+		{ value: 14, label: '14d' },
+		{ value: 30, label: '30d' }
+	] as const;
+
+	let rangeDays = $state(30);
+
+	function loadRangePrefs() {
+		if (!browser) return;
+		try {
+			const stored = localStorage.getItem(RANGE_STORAGE_KEY);
+			if (stored) rangeDays = JSON.parse(stored);
+		} catch { /* ignore */ }
+	}
+
+	loadRangePrefs();
+
+	$effect(() => {
+		if (!browser) return;
+		localStorage.setItem(RANGE_STORAGE_KEY, JSON.stringify(rangeDays));
+	});
+
+	let rangeStart = $derived(new Date(Date.now() - rangeDays * 24 * 60 * 60 * 1000).toISOString());
+	let rangeEnd = $derived(new Date().toISOString());
+	let rangeLabel = $derived(rangeOptions.find((o) => o.value === rangeDays)?.label ?? `${rangeDays}d`);
 
 	const healthQuery = createQuery(() => ({
 		queryKey: ['health'],
@@ -22,34 +49,36 @@
 	}));
 
 	const metricsQuery = createQuery(() => ({
-		queryKey: ['metrics', 'hourly', '24h'],
-		queryFn: () => fetchMetricsHourly(start24h, end24h, 'model', apiKey)
+		queryKey: ['metrics', 'hourly', rangeDays],
+		queryFn: () => fetchMetricsHourly(rangeStart, rangeEnd, 'model', apiKey)
 	}));
 
 	const costsQuery = createQuery(() => ({
-		queryKey: ['costs', 'model', 'daily'],
-		queryFn: () => fetchCostsBreakdown('model', 'daily', undefined, undefined, apiKey)
+		queryKey: ['costs', 'model', 'daily', rangeDays],
+		queryFn: () => fetchCostsBreakdown('model', 'daily', rangeStart, rangeEnd, apiKey)
 	}));
 
-	let totalCost24h = $derived(
+	let totalCost = $derived(
 		(metricsQuery.data?.metrics ?? []).reduce((s: number, m: MetricRow) => s + m.total_cost, 0)
 	);
-	let totalRequests24h = $derived(
+	let totalRequests = $derived(
 		(metricsQuery.data?.metrics ?? []).reduce((s: number, m: MetricRow) => s + m.request_count, 0)
 	);
-	let totalErrors24h = $derived(
+	let totalErrors = $derived(
 		(metricsQuery.data?.metrics ?? []).reduce((s: number, m: MetricRow) => s + m.error_count, 0)
 	);
-	let maxP95Latency24h = $derived(
+	let maxP95Latency = $derived(
 		Math.max(0, ...(metricsQuery.data?.metrics ?? []).map((m: MetricRow) => m.p95_latency_ms))
 	);
 
 	let chartData = $derived.by(() => {
 		const byHour = new Map<string, { cost: number; requests: number }>();
 		for (const m of metricsQuery.data?.metrics ?? []) {
-			const h = new Date(m.hour).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-			const prev = byHour.get(h) ?? { cost: 0, requests: 0 };
-			byHour.set(h, { cost: prev.cost + m.total_cost, requests: prev.requests + m.request_count });
+			const fmt = rangeDays <= 1
+				? new Date(m.hour).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+				: new Date(m.hour).toLocaleDateString([], { month: 'short', day: 'numeric' });
+			const prev = byHour.get(fmt) ?? { cost: 0, requests: 0 };
+			byHour.set(fmt, { cost: prev.cost + m.total_cost, requests: prev.requests + m.request_count });
 		}
 		return Array.from(byHour.entries())
 			.map(([hour, v]) => ({ hour, cost: +v.cost.toFixed(4), requests: v.requests }))
@@ -63,9 +92,23 @@
 </script>
 
 <div class="space-y-6">
-	<h1 class="text-2xl font-bold">Dashboard</h1>
+	<div class="flex items-center justify-between">
+		<h1 class="text-2xl font-bold">Dashboard</h1>
+		<div class="flex items-center gap-1 rounded-lg bg-gray-100 p-1 dark:bg-gray-800">
+			{#each rangeOptions as opt}
+				<button
+					onclick={() => (rangeDays = opt.value)}
+					class="rounded-md px-3 py-1 text-sm font-medium transition-colors {rangeDays === opt.value
+						? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white'
+						: 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'}"
+				>
+					{opt.label}
+				</button>
+			{/each}
+		</div>
+	</div>
 
-	<AlertBanner cost24h={totalCost24h} errors24h={totalErrors24h} p95LatencyMs={maxP95Latency24h} />
+	<AlertBanner cost24h={totalCost} errors24h={totalErrors} p95LatencyMs={maxP95Latency} />
 
 	<!-- Summary cards -->
 	<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -81,20 +124,20 @@
 		</div>
 
 		<div class="rounded-lg bg-gray-100 p-4 dark:bg-gray-800">
-			<p class="text-sm text-gray-600 dark:text-gray-400">Requests (24h)</p>
+			<p class="text-sm text-gray-600 dark:text-gray-400">Requests ({rangeLabel})</p>
 			{#if metricsQuery.isLoading}
 				<div class="mt-2"><Spinner size="sm" /></div>
 			{:else}
-				<p class="mt-1 text-2xl font-bold">{totalRequests24h.toLocaleString()}</p>
+				<p class="mt-1 text-2xl font-bold">{totalRequests.toLocaleString()}</p>
 			{/if}
 		</div>
 
 		<div class="rounded-lg bg-gray-100 p-4 dark:bg-gray-800">
-			<p class="text-sm text-gray-600 dark:text-gray-400">Cost (24h)</p>
+			<p class="text-sm text-gray-600 dark:text-gray-400">Cost ({rangeLabel})</p>
 			{#if metricsQuery.isLoading}
 				<div class="mt-2"><Spinner size="sm" /></div>
 			{:else}
-				<p class="mt-1 text-2xl font-bold">${totalCost24h.toFixed(4)}</p>
+				<p class="mt-1 text-2xl font-bold">${totalCost.toFixed(4)}</p>
 			{/if}
 		</div>
 
@@ -112,7 +155,7 @@
 
 	<!-- Trend chart -->
 	<div class="rounded-lg bg-gray-100 p-4 dark:bg-gray-800">
-		<h2 class="mb-4 text-lg font-semibold">Hourly trend (24h)</h2>
+		<h2 class="mb-4 text-lg font-semibold">Hourly trend ({rangeLabel})</h2>
 		{#if metricsQuery.isLoading}
 			<div class="flex h-48 items-center justify-center"><Spinner /></div>
 		{:else if metricsQuery.isError}
@@ -146,7 +189,7 @@
 
 	<!-- Top models table -->
 	<div class="rounded-lg bg-gray-100 p-4 dark:bg-gray-800">
-		<h2 class="mb-4 text-lg font-semibold">Top models by cost (today)</h2>
+		<h2 class="mb-4 text-lg font-semibold">Top models by cost ({rangeLabel})</h2>
 		{#if costsQuery.isLoading}
 			<div class="py-4"><Spinner /></div>
 		{:else if costsQuery.isError}

@@ -22,18 +22,18 @@
 
 	// Auto-refresh state
 	const REFRESH_STORAGE_KEY = 'or-observer-auto-refresh';
-	const ALLOWED_INTERVALS = [5000, 10000, 30000, 60000];
-	let autoRefreshEnabled = $state(false);
-	let autoRefreshInterval = $state(10000);
+	const ALLOWED_INTERVALS = [0, 5000, 10000, 30000, 60000, 300000];
+	// 0 = off, otherwise interval in ms
+	let autoRefreshMs = $state(0);
+	let autoRefreshEnabled = $derived(autoRefreshMs > 0);
 	let mounted = $state(false);
 
 	onMount(() => {
 		try {
 			const stored = localStorage.getItem(REFRESH_STORAGE_KEY);
 			if (stored) {
-				const prefs = JSON.parse(stored);
-				autoRefreshEnabled = typeof prefs.enabled === 'boolean' ? prefs.enabled : false;
-				autoRefreshInterval = ALLOWED_INTERVALS.includes(prefs.interval) ? prefs.interval : 10000;
+				const val = JSON.parse(stored);
+				if (ALLOWED_INTERVALS.includes(val)) autoRefreshMs = val;
 			}
 		} catch { /* ignore */ }
 		mounted = true;
@@ -41,10 +41,7 @@
 
 	$effect(() => {
 		if (!mounted) return;
-		localStorage.setItem(REFRESH_STORAGE_KEY, JSON.stringify({
-			enabled: autoRefreshEnabled,
-			interval: autoRefreshInterval
-		}));
+		localStorage.setItem(REFRESH_STORAGE_KEY, JSON.stringify(autoRefreshMs));
 	});
 
 	let parsedMetadata = $derived<Record<string, unknown>>(
@@ -67,7 +64,7 @@
 				limit,
 				offset
 			}, apiKey),
-		refetchInterval: autoRefreshEnabled ? autoRefreshInterval : false
+		refetchInterval: autoRefreshMs > 0 ? autoRefreshMs : false
 	}));
 
 	let total = $derived(query.data?.total ?? 0);
@@ -151,40 +148,32 @@
 			Clear
 		</button>
 
-		<!-- Auto-refresh controls -->
-		<div class="ml-auto flex items-center gap-2">
-			<button
-				type="button"
-				onclick={() => (autoRefreshEnabled = !autoRefreshEnabled)}
-				class="flex items-center gap-1.5 rounded px-3 py-1.5 text-sm font-medium transition-colors {autoRefreshEnabled
-					? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/40 dark:text-green-400 dark:hover:bg-green-900/60'
-					: 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}"
-				aria-label="Toggle auto-refresh"
+		<!-- Auto-refresh dropdown -->
+		<div class="ml-auto flex items-center gap-1.5">
+			<svg
+				class="h-4 w-4 {autoRefreshEnabled ? 'animate-spin text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}"
+				style={autoRefreshEnabled ? `animation-duration: ${autoRefreshMs}ms` : ''}
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke="currentColor"
+				stroke-width="2"
 			>
-				<svg
-					class="h-4 w-4 {autoRefreshEnabled ? 'animate-spin' : ''}"
-					style={autoRefreshEnabled ? `animation-duration: ${autoRefreshInterval}ms` : ''}
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
-					stroke-width="2"
-				>
-					<path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-				</svg>
-				Auto
-			</button>
-			{#if autoRefreshEnabled}
-				<select
-					bind:value={autoRefreshInterval}
-					aria-label="Refresh interval"
-					class="rounded bg-gray-200 px-2 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
-				>
-					<option value={5000}>5s</option>
-					<option value={10000}>10s</option>
-					<option value={30000}>30s</option>
-					<option value={60000}>60s</option>
-				</select>
-			{/if}
+				<path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+			</svg>
+			<select
+				bind:value={autoRefreshMs}
+				aria-label="Auto-refresh interval"
+				class="rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 {autoRefreshEnabled
+					? 'bg-green-100 text-green-700 focus:ring-green-500 dark:bg-green-900/40 dark:text-green-400'
+					: 'bg-gray-200 text-gray-900 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white'}"
+			>
+				<option value={0}>Auto: off</option>
+				<option value={5000}>Auto: 5s</option>
+				<option value={10000}>Auto: 10s</option>
+				<option value={30000}>Auto: 30s</option>
+				<option value={60000}>Auto: 1m</option>
+				<option value={300000}>Auto: 5m</option>
+			</select>
 		</div>
 	</form>
 

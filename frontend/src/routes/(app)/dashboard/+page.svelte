@@ -42,8 +42,14 @@
 		localStorage.setItem(RANGE_STORAGE_KEY, JSON.stringify(rangeDays));
 	});
 
-	let rangeStart = $derived(new Date(Date.now() - rangeDays * 24 * 60 * 60 * 1000).toISOString());
-	let rangeEnd = $derived(new Date().toISOString());
+	// Compute start/end together so they use the same instant
+	let timeRange = $derived.by(() => {
+		const end = Date.now();
+		return {
+			start: new Date(end - rangeDays * 24 * 60 * 60 * 1000).toISOString(),
+			end: new Date(end).toISOString()
+		};
+	});
 	let rangeLabel = $derived(rangeOptions.find((o) => o.value === rangeDays)?.label ?? `${rangeDays}d`);
 
 	const healthQuery = createQuery(() => ({
@@ -54,25 +60,44 @@
 
 	const metricsQuery = createQuery(() => ({
 		queryKey: ['metrics', 'hourly', rangeDays],
-		queryFn: () => fetchMetricsHourly(rangeStart, rangeEnd, 'model', apiKey)
+		queryFn: () => fetchMetricsHourly(timeRange.start, timeRange.end, 'model', apiKey)
 	}));
 
 	const costsQuery = createQuery(() => ({
 		queryKey: ['costs', 'model', 'daily', rangeDays],
-		queryFn: () => fetchCostsBreakdown('model', 'daily', rangeStart, rangeEnd, apiKey)
+		queryFn: () => fetchCostsBreakdown('model', 'daily', timeRange.start, timeRange.end, apiKey)
 	}));
+
+	// Dedicated 24h metrics for AlertBanner (thresholds are per-day)
+	let alert24hRange = $derived.by(() => {
+		const end = Date.now();
+		return {
+			start: new Date(end - 24 * 60 * 60 * 1000).toISOString(),
+			end: new Date(end).toISOString()
+		};
+	});
+
+	const alert24hQuery = createQuery(() => ({
+		queryKey: ['metrics', 'hourly', 'alert-24h'],
+		queryFn: () => fetchMetricsHourly(alert24hRange.start, alert24hRange.end, 'model', apiKey),
+		refetchInterval: 60_000
+	}));
+
+	let totalCost24h = $derived(
+		(alert24hQuery.data?.metrics ?? []).reduce((s: number, m: MetricRow) => s + m.total_cost, 0)
+	);
+	let totalErrors24h = $derived(
+		(alert24hQuery.data?.metrics ?? []).reduce((s: number, m: MetricRow) => s + m.error_count, 0)
+	);
+	let maxP95Latency24h = $derived(
+		Math.max(0, ...(alert24hQuery.data?.metrics ?? []).map((m: MetricRow) => m.p95_latency_ms))
+	);
 
 	let totalCost = $derived(
 		(metricsQuery.data?.metrics ?? []).reduce((s: number, m: MetricRow) => s + m.total_cost, 0)
 	);
 	let totalRequests = $derived(
 		(metricsQuery.data?.metrics ?? []).reduce((s: number, m: MetricRow) => s + m.request_count, 0)
-	);
-	let totalErrors = $derived(
-		(metricsQuery.data?.metrics ?? []).reduce((s: number, m: MetricRow) => s + m.error_count, 0)
-	);
-	let maxP95Latency = $derived(
-		Math.max(0, ...(metricsQuery.data?.metrics ?? []).map((m: MetricRow) => m.p95_latency_ms))
 	);
 
 	let chartData = $derived.by(() => {
@@ -112,7 +137,7 @@
 		</div>
 	</div>
 
-	<AlertBanner cost24h={totalCost} errors24h={totalErrors} p95LatencyMs={maxP95Latency} />
+	<AlertBanner cost24h={totalCost24h} errors24h={totalErrors24h} p95LatencyMs={maxP95Latency24h} />
 
 	<!-- Summary cards -->
 	<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

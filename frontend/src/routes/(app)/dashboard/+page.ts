@@ -4,9 +4,11 @@ import type { PageLoad } from './$types';
 export const load: PageLoad = async ({ parent }) => {
 	const { queryClient, apiKey } = await parent();
 
+	const defaultDays = 30;
 	const now = new Date();
+	const start = new Date(now.getTime() - defaultDays * 24 * 60 * 60 * 1000).toISOString();
 	const start24h = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
-	const end24h = now.toISOString();
+	const end = now.toISOString();
 
 	await Promise.allSettled([
 		queryClient.prefetchQuery({
@@ -14,12 +16,16 @@ export const load: PageLoad = async ({ parent }) => {
 			queryFn: () => fetchHealth(apiKey)
 		}),
 		queryClient.prefetchQuery({
-			queryKey: ['metrics', 'hourly', '24h'],
-			queryFn: () => fetchMetricsHourly(start24h, end24h, 'model', apiKey)
+			queryKey: ['metrics', 'hourly', defaultDays],
+			queryFn: () => fetchMetricsHourly(start, end, 'model', apiKey)
 		}),
 		queryClient.prefetchQuery({
-			queryKey: ['costs', 'model', 'daily'],
-			queryFn: () => fetchCostsBreakdown('model', 'daily', undefined, undefined, apiKey)
+			queryKey: ['metrics', 'hourly', 'alert-24h'],
+			queryFn: () => fetchMetricsHourly(start24h, end, 'model', apiKey)
+		}),
+		queryClient.prefetchQuery({
+			queryKey: ['costs', 'model', 'daily', defaultDays],
+			queryFn: () => fetchCostsBreakdown('model', 'daily', start, end, apiKey)
 		})
 	]);
 };

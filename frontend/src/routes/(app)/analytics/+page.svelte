@@ -53,23 +53,25 @@
 		const rangeDays = rangeMs / (24 * 60 * 60 * 1000);
 
 		if (rangeDays > 2) {
-			const byDay = new Map<string, { avg: number[]; p95: number[]; p99: number[] }>();
+			const byDay = new Map<string, { avgWeighted: number; totalReqs: number; p95: number[]; p99: number[] }>();
 			for (const m of raw) {
-				const key = new Date(m.hour).toLocaleDateString([], { month: 'short', day: 'numeric' });
-				const bucket = byDay.get(key) ?? { avg: [], p95: [], p99: [] };
-				bucket.avg.push(m.avg_latency_ms);
+				// Use ISO date as key to avoid cross-year collisions
+				const isoKey = new Date(m.hour).toISOString().slice(0, 10);
+				const bucket = byDay.get(isoKey) ?? { avgWeighted: 0, totalReqs: 0, p95: [], p99: [] };
+				bucket.avgWeighted += m.avg_latency_ms * m.request_count;
+				bucket.totalReqs += m.request_count;
 				bucket.p95.push(m.p95_latency_ms);
 				bucket.p99.push(m.p99_latency_ms);
-				byDay.set(key, bucket);
+				byDay.set(isoKey, bucket);
 			}
 			return Array.from(byDay.entries())
-				.map(([hour, v]) => ({
-					hour,
-					avg: +(v.avg.reduce((a, b) => a + b, 0) / v.avg.length).toFixed(1),
+				.sort(([a], [b]) => a.localeCompare(b))
+				.map(([isoKey, v]) => ({
+					hour: new Date(isoKey + 'T00:00:00').toLocaleDateString([], { month: 'short', day: 'numeric' }),
+					avg: +(v.totalReqs > 0 ? v.avgWeighted / v.totalReqs : 0).toFixed(1),
 					p95: +Math.max(...v.p95).toFixed(1),
 					p99: +Math.max(...v.p99).toFixed(1)
-				}))
-				.reverse();
+				}));
 		}
 
 		return raw

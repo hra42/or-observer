@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
+	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { createQuery } from '@tanstack/svelte-query';
 	import { fetchTraces, type TraceRow } from '$lib/api';
@@ -21,25 +22,25 @@
 
 	// Auto-refresh state
 	const REFRESH_STORAGE_KEY = 'or-observer-auto-refresh';
+	const ALLOWED_INTERVALS = [5000, 10000, 30000, 60000];
 	let autoRefreshEnabled = $state(false);
 	let autoRefreshInterval = $state(10000);
+	let mounted = $state(false);
 
-	function loadRefreshPrefs() {
-		if (!browser) return;
+	onMount(() => {
 		try {
 			const stored = localStorage.getItem(REFRESH_STORAGE_KEY);
 			if (stored) {
 				const prefs = JSON.parse(stored);
-				autoRefreshEnabled = prefs.enabled ?? false;
-				autoRefreshInterval = prefs.interval ?? 10000;
+				autoRefreshEnabled = typeof prefs.enabled === 'boolean' ? prefs.enabled : false;
+				autoRefreshInterval = ALLOWED_INTERVALS.includes(prefs.interval) ? prefs.interval : 10000;
 			}
 		} catch { /* ignore */ }
-	}
-
-	loadRefreshPrefs();
+		mounted = true;
+	});
 
 	$effect(() => {
-		if (!browser) return;
+		if (!mounted) return;
 		localStorage.setItem(REFRESH_STORAGE_KEY, JSON.stringify({
 			enabled: autoRefreshEnabled,
 			interval: autoRefreshInterval

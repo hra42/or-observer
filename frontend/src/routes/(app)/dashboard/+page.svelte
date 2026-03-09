@@ -14,6 +14,7 @@
 
 	// Time range configuration
 	const RANGE_STORAGE_KEY = 'or-observer-dashboard-range';
+	const ALLOWED_RANGES = [1, 7, 14, 30];
 	const rangeOptions = [
 		{ value: 1, label: '24h' },
 		{ value: 7, label: '7d' },
@@ -27,7 +28,10 @@
 		if (!browser) return;
 		try {
 			const stored = localStorage.getItem(RANGE_STORAGE_KEY);
-			if (stored) rangeDays = JSON.parse(stored);
+			if (stored) {
+				const val = JSON.parse(stored);
+				if (ALLOWED_RANGES.includes(val)) rangeDays = val;
+			}
 		} catch { /* ignore */ }
 	}
 

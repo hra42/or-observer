@@ -46,20 +46,41 @@
 		queryFn: () => fetchMetricsHourly(toRFC3339(rangeStart), toRFC3339(rangeEnd), latencyGroupBy, apiKey)
 	}));
 
-	let latencyData = $derived(
-		(latencyQuery.data?.metrics ?? [])
+	let latencyData = $derived.by(() => {
+		const raw = latencyQuery.data?.metrics ?? [];
+		// Aggregate into daily buckets when range > 2 days for readability
+		const rangeMs = new Date(rangeEnd).getTime() - new Date(rangeStart).getTime();
+		const rangeDays = rangeMs / (24 * 60 * 60 * 1000);
+
+		if (rangeDays > 2) {
+			const byDay = new Map<string, { avg: number[]; p95: number[]; p99: number[] }>();
+			for (const m of raw) {
+				const key = new Date(m.hour).toLocaleDateString([], { month: 'short', day: 'numeric' });
+				const bucket = byDay.get(key) ?? { avg: [], p95: [], p99: [] };
+				bucket.avg.push(m.avg_latency_ms);
+				bucket.p95.push(m.p95_latency_ms);
+				bucket.p99.push(m.p99_latency_ms);
+				byDay.set(key, bucket);
+			}
+			return Array.from(byDay.entries())
+				.map(([hour, v]) => ({
+					hour,
+					avg: +(v.avg.reduce((a, b) => a + b, 0) / v.avg.length).toFixed(1),
+					p95: +Math.max(...v.p95).toFixed(1),
+					p99: +Math.max(...v.p99).toFixed(1)
+				}))
+				.reverse();
+		}
+
+		return raw
 			.map((m: MetricRow) => ({
-				hour: new Date(m.hour).toLocaleDateString([], {
-					month: 'short',
-					day: 'numeric',
-					hour: '2-digit'
-				}),
+				hour: new Date(m.hour).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
 				avg: +m.avg_latency_ms.toFixed(1),
 				p95: +m.p95_latency_ms.toFixed(1),
 				p99: +m.p99_latency_ms.toFixed(1)
 			}))
-			.reverse()
-	);
+			.reverse();
+	});
 
 	let costData = $derived(
 		(costsQuery.data?.breakdown ?? []).map((b: BreakdownRow) => ({
@@ -78,6 +99,16 @@
 		p95: { label: 'P95 (ms)', color: '#f59e0b' },
 		p99: { label: 'P99 (ms)', color: '#ef4444' }
 	} satisfies Chart.ChartConfig;
+
+	// Thin x-axis labels: show at most ~maxTicks labels evenly spaced
+	function thinLabels(data: { hour: string }[], maxTicks = 12): (d: string) => string {
+		const step = Math.max(1, Math.ceil(data.length / maxTicks));
+		const show = new Set(data.filter((_, i) => i % step === 0).map((d) => d.hour));
+		return (d: string) => (show.has(d) ? d : '');
+	}
+
+	let latencyTickFormat = $derived(thinLabels(latencyData));
+	let costTickFormat = $derived(thinLabels(costData.map((d) => ({ hour: d.name }))));
 
 	const inputClass =
 		'rounded bg-gray-200 px-3 py-1 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white';
@@ -153,7 +184,7 @@
 						props={{
 							bars: { stroke: 'none', rounded: 'all', radius: 4 },
 							highlight: { area: { fill: 'none' } },
-							xAxis: { format: (d: string) => d, tickLabelProps: { rotate: -30, textAnchor: 'end' } }
+							xAxis: { format: costTickFormat }
 						}}
 					>
 						{#snippet tooltip()}
@@ -234,7 +265,7 @@
 						]}
 						props={{
 							spline: { strokeWidth: 2 },
-							xAxis: { format: (d: string) => d, tickLabelProps: { rotate: -30, textAnchor: 'end' } }
+							xAxis: { format: latencyTickFormat }
 						}}
 					>
 						{#snippet tooltip()}

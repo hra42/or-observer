@@ -42,7 +42,7 @@ func NewClient(dbPath string) (*Client, error) {
 	bootQueries := []string{
 		"INSTALL ducklake",
 		"LOAD ducklake",
-		fmt.Sprintf("ATTACH 'ducklake:%s' AS lake (DATA_PATH '%s')", catalogPath, parquetsPath),
+		fmt.Sprintf("ATTACH 'ducklake:%s' AS lake (DATA_PATH '%s', AUTOMATIC_MIGRATION TRUE)", catalogPath, parquetsPath),
 	}
 	for _, q := range bootQueries {
 		if _, err := db.ExecContext(ctx, q); err != nil {

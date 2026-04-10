@@ -14,7 +14,7 @@
 	"devDependencies": {
 		"@lucide/svelte": "^0.577.0",
 		"@sveltejs/adapter-auto": "^7.0.0",
-		"@sveltejs/kit": "^2.55.0",
+		"@sveltejs/kit": "^2.57.1",
 		"@sveltejs/vite-plugin-svelte": "^7.0.0",
 		"@tailwindcss/vite": "^4.2.2",
 		"@types/d3-scale": "^4.0.9",

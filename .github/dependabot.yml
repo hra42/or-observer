@@ -1,56 +1,69 @@
 version: 2
-
 updates:
-  # Go modules (backend)
-  - package-ecosystem: "gomod"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "04:00"
-      timezone: "UTC"
-    labels: ["dependencies", "go", "backend"]
-    commit-message:
-      prefix: "chore(deps)"
-      include: "scope"
-    pull-request-branch-name:
-      separator: "/"
-    rebase-strategy: "auto"
-    open-pull-requests-limit: 5
-    groups:
-      minor-and-patch:
-        update-types: ["minor", "patch"]
-      major:
-        update-types: ["major"]
-
-  # npm (frontend)
-  - package-ecosystem: "npm"
-    directory: "/frontend"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "04:00"
-      timezone: "UTC"
-    labels: ["dependencies", "javascript", "frontend"]
-    commit-message:
-      prefix: "chore(deps)"
-      prefix-development: "chore(deps-dev)"
-      include: "scope"
-    pull-request-branch-name:
-      separator: "/"
-    rebase-strategy: "auto"
-    open-pull-requests-limit: 5
-    groups:
-      production-minor-and-patch:
-        dependency-type: "production"
-        update-types: ["minor", "patch"]
-      production-major:
-        dependency-type: "production"
-        update-types: ["major"]
-      development:
-        dependency-type: "development"
-    allow:
-      - dependency-type: "all"
-    ignore:
-      - dependency-name: "typescript"
-        versions: ["5.0.x"]
+- package-ecosystem: gomod
+  directory: /
+  schedule:
+    interval: weekly
+    day: monday
+    time: 04:00
+    timezone: UTC
+  labels:
+  - dependencies
+  - go
+  - backend
+  commit-message:
+    prefix: chore(deps)
+    include: scope
+  pull-request-branch-name:
+    separator: /
+  rebase-strategy: auto
+  open-pull-requests-limit: 5
+  groups:
+    minor-and-patch:
+      update-types:
+      - minor
+      - patch
+    major:
+      update-types:
+      - major
+  assignees:
+  - hra42
+- package-ecosystem: npm
+  directory: /frontend
+  schedule:
+    interval: weekly
+    day: monday
+    time: 04:00
+    timezone: UTC
+  labels:
+  - dependencies
+  - javascript
+  - frontend
+  commit-message:
+    prefix: chore(deps)
+    prefix-development: chore(deps-dev)
+    include: scope
+  pull-request-branch-name:
+    separator: /
+  rebase-strategy: auto
+  open-pull-requests-limit: 5
+  groups:
+    production-minor-and-patch:
+      dependency-type: production
+      update-types:
+      - minor
+      - patch
+    production-major:
+      dependency-type: production
+      update-types:
+      - major
+    development:
+      dependency-type: development
+  allow:
+  - dependency-type: all
+  ignore:
+  - dependency-name: typescript
+    versions:
+    - 5.0.x
+  assignees:
+  - hra42

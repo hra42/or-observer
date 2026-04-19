@@ -1,5 +1,12 @@
-import type { Tooltip } from "layerchart";
-import { getContext, setContext, type Component, type ComponentProps, type Snippet } from "svelte";
+import { getContext, setContext, type Component, type Snippet } from "svelte";
+
+type TooltipSeries = {
+	key: string;
+	label: string;
+	value: unknown;
+	color?: string;
+	visible?: boolean;
+};
 
 export const THEMES = { light: "", dark: ".dark" } as const;
 
@@ -15,9 +22,14 @@ export type ChartConfig = {
 
 export type ExtractSnippetParams<T> = T extends Snippet<[infer P]> ? P : never;
 
-export type TooltipPayload = ExtractSnippetParams<
-	ComponentProps<typeof Tooltip.Root>["children"]
->["payload"][number];
+// layerchart v2 exposes tooltip series via the chart context. We extend the
+// TooltipSeries shape with optional fields the shadcn-svelte helpers look up
+// when resolving the config entry for a given payload item.
+export type TooltipPayload = TooltipSeries & {
+	name?: string;
+	payload?: Record<string, unknown> & { color?: string };
+	[key: string]: unknown;
+};
 
 // Helper to extract item config from a payload.
 export function getPayloadConfigFromPayload(

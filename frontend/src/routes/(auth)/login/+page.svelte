@@ -2,6 +2,12 @@
 	import { page } from '$app/state';
 
 	let { form } = $props();
+
+	let keyInput: HTMLInputElement | null = $state(null);
+
+	$effect(() => {
+		keyInput?.focus();
+	});
 </script>
 
 <div class="w-full max-w-sm rounded-lg bg-white p-8 shadow-lg dark:bg-gray-800">
@@ -18,11 +24,11 @@
 		<input type="hidden" name="redirect" value={page.url.searchParams.get('redirect') ?? '/dashboard'} />
 		<label for="key" class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">API Key</label>
 		<input
+			bind:this={keyInput}
 			id="key"
 			name="key"
 			type="password"
 			required
-			autofocus
 			class="mb-4 w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
 			placeholder="Enter API key"
 		/>

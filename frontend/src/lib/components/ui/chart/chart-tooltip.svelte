@@ -2,7 +2,7 @@
 	import { cn, type WithElementRef, type WithoutChildren } from "$lib/utils.js";
 	import type { HTMLAttributes } from "svelte/elements";
 	import { getPayloadConfigFromPayload, useChart, type TooltipPayload } from "./chart-utils.js";
-	import { getTooltipContext, Tooltip as TooltipPrimitive } from "layerchart";
+	import { getChartContext, Tooltip as TooltipPrimitive } from "layerchart";
 	import type { Snippet } from "svelte";
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -48,9 +48,9 @@
 	} = $props();
 
 	const chart = useChart();
-	const tooltipCtx = getTooltipContext();
+	const chartCtx = getChartContext();
 
-	const payload = $derived((tooltipCtx.payload ?? []) as TooltipPayload[]);
+	const payload = $derived((chartCtx.tooltip.series ?? []) as TooltipPayload[]);
 
 	const formattedLabel = $derived.by(() => {
 		if (hideLabel || payload.length === 0) return null;
@@ -100,7 +100,7 @@
 			{#each payload as item, i (item.key + i)}
 				{@const key = `${nameKey || item.key || item.name || "value"}`}
 				{@const itemConfig = getPayloadConfigFromPayload(chart.config, item, key)}
-				{@const indicatorColor = color || item.payload?.color || item.color}
+				{@const indicatorColor = color || item.config?.color || item.color}
 				<div
 					class={cn(
 						"[&>svg]:text-muted-foreground flex w-full flex-wrap items-stretch gap-2 [&>svg]:size-2.5",

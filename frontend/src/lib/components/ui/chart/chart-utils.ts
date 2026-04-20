@@ -15,9 +15,15 @@ export type ChartConfig = {
 
 export type ExtractSnippetParams<T> = T extends Snippet<[infer P]> ? P : never;
 
-export type TooltipPayload = ExtractSnippetParams<
-	ComponentProps<typeof Tooltip.Root>["children"]
->["payload"][number];
+// LayerChart v2 Tooltip series type
+export type TooltipPayload = {
+	key: string;
+	label: string;
+	value: any;
+	color?: string;
+	visible: boolean;
+	[key: string]: any;
+};
 
 // Helper to extract item config from a payload.
 export function getPayloadConfigFromPayload(

@@ -3,7 +3,7 @@ module github.com/hra42/or-observer
 go 1.26
 
 require (
-	github.com/duckdb/duckdb-go/v2 v2.10503.0
+	github.com/duckdb/duckdb-go/v2 v2.10503.1
 	github.com/hra42/openrouter-go v1.7.0
 	go.uber.org/zap v1.28.0
 )

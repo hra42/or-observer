@@ -65,5 +65,6 @@ updates:
   - dependency-name: typescript
     versions:
     - 5.0.x
+    - '>=7.0.0'
   assignees:
   - hra42
